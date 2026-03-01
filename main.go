@@ -4,6 +4,7 @@ import (
 	"Project1_Shop/dao/mysql"
 	"Project1_Shop/dao/redis"
 	"Project1_Shop/logger"
+	"Project1_Shop/pkg/snowflake"
 	"Project1_Shop/router"
 	"Project1_Shop/settings"
 	"context"
@@ -45,6 +46,11 @@ func main() {
 		return
 	}
 	defer redis.Close()
+	//初始化雪花算法
+	if err := snowflake.Init(settings.Conf.StartTime, int64(settings.Conf.MachineID)); err != nil {
+		fmt.Printf("init snowflake failed, err: %v\n", err)
+		return
+	}
 	//5，注册路由
 	r := router.SetUp()
 	//6，启动服务（优雅关机）

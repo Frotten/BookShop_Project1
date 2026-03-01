@@ -2,6 +2,8 @@ app:
   name : "Shop"
   mode : "Dev"
   port : 8080
+  start_time: "2026-3-1"
+  machine_id: 1
 
 log:
   level : "debug"
