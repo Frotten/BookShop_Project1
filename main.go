@@ -48,6 +48,7 @@ func main() {
 	}
 	defer redis.Close()
 	//初始化雪花算法
+	fmt.Println("SnowFlake:", settings.Conf)
 	if err := snowflake.Init(settings.Conf.StartTime, int64(settings.Conf.MachineID)); err != nil {
 		fmt.Printf("init snowflake failed, err: %v\n", err)
 		return

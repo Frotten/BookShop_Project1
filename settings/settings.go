@@ -8,18 +8,22 @@ import (
 )
 
 // Conf 全局变量，用以保存程序中的所有配置信息
-var Conf = new(AppConfig)
+var Conf = new(App)
 
-type AppConfig struct {
-	Name         string `mapstructure:"name"`
-	Mode         string `mapstructure:"mode"`
-	Version      string `mapstructure:"version"`
-	Port         int    `mapstructure:"port"`
-	StartTime    string `mapstructure:"start_time"`
-	MachineID    int    `mapstructure:"machine_id"`
+type App struct {
+	*AppConfig   `mapstructure:"app"`
 	*LogConfig   `mapstructure:"log"`
 	*MySQLConfig `mapstructure:"mysql"`
 	*RedisConfig `mapstructure:"redis"`
+}
+
+type AppConfig struct {
+	Name      string `mapstructure:"name"`
+	Mode      string `mapstructure:"mode"`
+	Version   string `mapstructure:"version"`
+	Port      int    `mapstructure:"port"`
+	StartTime string `mapstructure:"start_time"`
+	MachineID int    `mapstructure:"machine_id"`
 }
 
 type LogConfig struct {

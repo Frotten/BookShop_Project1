@@ -2,32 +2,32 @@ app:
   name : "Shop"
   mode : "Dev"
   port : 8080
-  start_time: "2026-3-1"
+  start_time: "2026-03-01"
   machine_id: 1
 
 log:
   level : "debug"
-  filename : "WebApp.log"
+  filename : "Shop1.log"
   max_size : 500
   max_backups : 5
   max_age : 30
 
 mysql:
-  host: "192.168.56.1"
+  host: "127.0.0.1"
   port: 3306
   user: "root"
   password: "zheshimima"
-  dbname: "webapp"
+  dbname: "Shop1"
 
 redis:
-  host: "172.18.217.232"
+  host: "192.168.56.101"
   port: 6379
   db : 0
   password : "zheshimima"
   pool_size : 100
 
 rabbitmq:
-  host: "172.18.217.232"
+  host: "192.168.56.101"
   port: 5672
   user: "frotten"
   password: "frotten"
