@@ -1,28 +1,31 @@
 package mysql
 
 import (
+	"Project1_Shop/models"
 	"Project1_Shop/settings"
 	"fmt"
 
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
-	"gorm.io/gorm/schema"
 )
 
 var DB *gorm.DB
 
 func Init(cfg *settings.MySQLConfig) (err error) {
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=True&loc=Local", cfg.User, cfg.Password, cfg.Host, cfg.Port, cfg.DbName)
-	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
-		NamingStrategy: schema.NamingStrategy{
-			SingularTable: true, // 使用单数表名,启用该选项后，`User` 的表名将是 `user`而不是 `users`
-		},
-	})
+	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
 		return err
 	}
 	DB = db
 	return nil
+}
+
+func AutoMigration() {
+	// 在这里添加需要自动迁移的模型
+	AutoMigrate(
+		&models.User{},
+	)
 }
 
 func AutoMigrate(models ...interface{}) {

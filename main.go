@@ -40,6 +40,7 @@ func main() {
 		return
 	}
 	defer mysql.Close()
+	mysql.AutoMigration()
 	//4，初始化Redis连接
 	if err := redis.Init(settings.Conf.RedisConfig); err != nil {
 		fmt.Printf("init redis failed, err:%v\n", err)
