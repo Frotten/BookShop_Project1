@@ -20,6 +20,7 @@ func SetUp() *gin.Engine {
 
 	v1.POST("/signup", controllers.SignUpHandler)
 	v1.POST("/login", controllers.LoginHandler)
+	v1.POST("/refreshtoken", controllers.RefreshHandler) //前端在中间件校验Token未通过时触发该函数以刷新token
 	v1.Use(middlewares.JWTAuthMiddleware())
 	{
 

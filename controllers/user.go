@@ -1,8 +1,11 @@
 package controllers
 
 import (
+	"Project1_Shop/dao/mysql"
 	"Project1_Shop/logic"
 	"Project1_Shop/models"
+	"Project1_Shop/pkg/jwt"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -41,9 +44,50 @@ func LoginHandler(c *gin.Context) {
 		HandleResponse(c, code)
 		return
 	}
-	HandleSuccess(c, User)
+	accessToken, err := jwt.GenToken(User.UserID)
+	if err != nil {
+		zap.L().Error("jwt.GenToken failed", zap.Error(err))
+		HandleResponse(c, models.CodeServerBusy)
+		return
+	}
+	refreshToken, tokenHash, err := jwt.GenerateRefreshToken()
+	if err != nil {
+		zap.L().Error("jwt.GenerateRefreshToken failed", zap.Error(err))
+		HandleResponse(c, models.CodeServerBusy)
+		return
+	}
+	mysql.DB.Create(&models.RefreshToken{
+		UserID:    User.UserID,
+		TokenHash: tokenHash,
+		ExpiresAt: time.Now().Add(jwt.TokenExpireDuration),
+	})
+	c.SetCookie(
+		"refresh_token",
+		refreshToken,
+		int(jwt.TokenExpireDuration.Seconds()),
+		"/",
+		"",
+		true,
+		true,
+	)
+	HandleSuccess(c, gin.H{
+		"access_token": accessToken,
+	})
 }
 
-func LogoutHandler(c *gin.Context) {
-
+func RefreshHandler(c *gin.Context) {
+	refreshToken, err := c.Cookie("refresh_token")
+	if err != nil {
+		HandleResponse(c, models.CodeInvalidToken)
+		return
+	}
+	newAccess, newRefresh, err := logic.Refresh(refreshToken)
+	if err != nil {
+		HandleResponse(c, models.CodeInvalidToken)
+		return
+	}
+	c.SetCookie("refresh_token", newRefresh, int(jwt.TokenExpireDuration), "/", "", true, true)
+	HandleSuccess(c, gin.H{
+		"access_token": newAccess,
+	})
 }

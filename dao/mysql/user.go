@@ -28,7 +28,7 @@ func CheckUserLogin(p *models.ParamLogin) (*models.User, models.ResCode) {
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		result = DB.Where("username = ?", p.Username).Find(&u)
 	}
-	token, err := jwt.GenToken(u.UserID, u.Username)
+	token, err := jwt.GenToken(u.UserID)
 	if err != nil {
 		return nil, models.CodeServerBusy
 	}

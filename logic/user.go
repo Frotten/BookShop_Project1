@@ -3,6 +3,8 @@ package logic
 import (
 	"Project1_Shop/dao/mysql"
 	"Project1_Shop/models"
+	"crypto/sha256"
+	"encoding/hex"
 
 	"go.uber.org/zap"
 )
@@ -41,4 +43,11 @@ func Login(p *models.ParamLogin) (*models.User, models.ResCode) {
 		return nil, code
 	}
 	return User, models.CodeSuccess
+}
+
+func Logout(refreshToken string) {
+	hash := sha256.Sum256([]byte(refreshToken))
+	tokenHash := hex.EncodeToString(hash[:])
+
+	mysql.DB.Where("token_hash = ?", tokenHash).Delete(&models.RefreshToken{})
 }
