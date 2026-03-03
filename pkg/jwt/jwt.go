@@ -4,7 +4,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/golang-jwt/jwt/v4"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 const TokenExpireDuration = 7 * 24 * time.Hour
@@ -25,11 +25,11 @@ func GenToken(userID int64, username string) (string, error) {
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(TokenExpireDuration)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()), //签发时间
 			NotBefore: jwt.NewNumericDate(time.Now()), //生效时间
-			Issuer:    "BlueBell",                     //签发人
+			Issuer:    "Shop",                         //签发人
 		},
 	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, c) //使用HS256加密算法
-	return token.SignedString(mySecret)                   //使用密钥进行签名
+	token, err := jwt.NewWithClaims(jwt.SigningMethodHS256, c).SignedString(mySecret) //使用HS256加密算法,并使用密钥进行签名
+	return token, err
 }
 
 func ParseToken(tokenString string) (*MyClaims, error) {

@@ -43,3 +43,7 @@ func LoginHandler(c *gin.Context) {
 	}
 	HandleSuccess(c, User)
 }
+
+func LogoutHandler(c *gin.Context) {
+
+}
