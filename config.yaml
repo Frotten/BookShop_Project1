@@ -1,7 +1,7 @@
 app:
   name : "Shop"
   mode : "Dev"
-  port : 8080
+  port : 9090
   start_time: "2026-03-01"
   machine_id: 1
 

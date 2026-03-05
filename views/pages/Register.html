@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>注册 - 网络书城</title>
+    <link rel="stylesheet" href="/static/css/CommonStyle.css">
+</head>
+<body class="auth-body">
+
+<div class="auth-card">
+    <h2>用户注册</h2>
+
+    <form id="registerForm" action="/api/v1/register" method="post">
+        <input type="text" id="username" name="username" placeholder="用户名" required>
+        <input type="email" id="Email" name="email" placeholder="邮箱" required>
+        <input type="password" id="Password" name="password" placeholder="密码" required>
+        <input type="password" id="regConfirm" name="re_Password" placeholder="确认密码" required>
+        <div class="gender-group">
+            <span class="gender-label">性别</span>
+            <label class="gender-option">
+                <input type="radio" name="gender" value="1" required>
+                男
+            </label>
+            <label class="gender-option">
+                <input type="radio" name="gender" value="0">
+                女
+            </label>
+        </div>
+        <button type="submit">注册</button>
+    </form>
+
+    <p class="switch-link">
+        已有账号？<a href="/LoginPage">去登录</a>
+    </p>
+</div>
+
+<script src="/static/js/CommonScript.js"></script>
+</body>
+</html>
