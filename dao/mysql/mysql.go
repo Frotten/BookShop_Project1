@@ -25,7 +25,6 @@ func AutoMigration() {
 	// 在这里添加需要自动迁移的模型
 	AutoMigrate(
 		&models.User{},
-		&models.RefreshToken{},
 	)
 }
 

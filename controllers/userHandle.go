@@ -1,11 +1,10 @@
 package controllers
 
 import (
-	"Project1_Shop/dao/mysql"
+	"Project1_Shop/dao/redis"
 	"Project1_Shop/logic"
 	"Project1_Shop/models"
 	"Project1_Shop/pkg/jwt"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -56,11 +55,17 @@ func LoginHandler(c *gin.Context) {
 		HandleResponse(c, models.CodeServerBusy)
 		return
 	}
-	mysql.DB.Create(&models.RefreshToken{
-		UserID:    User.UserID,
-		TokenHash: tokenHash,
-		ExpiresAt: time.Now().Add(jwt.TokenExpireDuration),
-	})
+
+	//mysql.DB.Create(&models.RefreshToken{
+	//	UserID:    User.UserID,
+	//	TokenHash: tokenHash,
+	//	ExpiresAt: time.Now().Add(jwt.TokenExpireDuration),
+	//})
+
+	//redis.RDB.Set("login:token:{"+refreshToken+"}", User.UserID, jwt.TokenExpireDuration)
+
+	redis.RDB.Set(c, "auth:refresh:"+tokenHash, User.UserID, jwt.TokenExpireDuration)
+
 	c.SetCookie(
 		"refresh_token",
 		refreshToken,
@@ -81,7 +86,7 @@ func RefreshHandler(c *gin.Context) {
 		HandleResponse(c, models.CodeInvalidToken)
 		return
 	}
-	newAccess, newRefresh, err := logic.Refresh(refreshToken)
+	newAccess, newRefresh, err := logic.Refresh(refreshToken, c)
 	if err != nil {
 		HandleResponse(c, models.CodeInvalidToken)
 		return
