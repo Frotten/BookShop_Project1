@@ -3,8 +3,6 @@ package logic
 import (
 	"Project1_Shop/dao/mysql"
 	"Project1_Shop/models"
-	"crypto/sha256"
-	"encoding/hex"
 
 	"go.uber.org/zap"
 )
@@ -45,9 +43,24 @@ func Login(p *models.ParamLogin) (*models.User, models.ResCode) {
 	return User, models.CodeSuccess
 }
 
-func Logout(refreshToken string) {
-	hash := sha256.Sum256([]byte(refreshToken))
-	tokenHash := hex.EncodeToString(hash[:])
+func AdminRegister(p *models.Admin) models.ResCode {
+	ok, err := mysql.CheckAdminExist(p.Username) //查询用户名合法性（不能是已存在昵称，也不能是别人的邮箱）
+	if ok == false {
+		if err != models.CodeUserExist {
+			zap.L().Error("logic.AdminRegister failed")
+			return models.CodeServerBusy
+		}
+		zap.L().Error("logic.AdminRegister failed")
+		return models.CodeUserExist
+	}
+	err = mysql.InsertAdmin(p)
+	if err != models.CodeSuccess {
+		zap.L().Error("mysql.InsertAdmin(p) failed")
+		return models.CodeServerBusy
+	}
+	return models.CodeSuccess
+}
 
-	mysql.DB.Where("token_hash = ?", tokenHash).Delete(&models.RefreshToken{})
+func AdminLogin(p *models.Admin) models.ResCode {
+	mysql.AdminLogin(&p)
 }

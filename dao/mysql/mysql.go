@@ -26,6 +26,7 @@ func AutoMigration() {
 	AutoMigrate(
 		&models.User{},
 		&models.Book{},
+		&models.Admin{},
 	)
 }
 

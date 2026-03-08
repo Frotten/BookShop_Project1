@@ -19,18 +19,24 @@ func SetUp() *gin.Engine {
 		c.String(http.StatusOK, "Welcome to the Shop")
 	})
 	r.POST("/refreshtoken", controllers.RefreshHandler) //前端在中间件校验Token未通过时触发该函数以刷新token
-	r.GET("/HomePage", controllers.HomePageHandle)
-	r.GET("/LoginPage", controllers.LoginPageHandle)
-	r.GET("/RegisterPage", controllers.RegisterPageHandle)
-	r.GET("/ProfilePage", controllers.ProfilePageHandle)
-	v1 := r.Group("/api/v1")
+	v1 := r.Group("/api")
 	{
 		v1.POST("/register", controllers.SignUpHandler)
 		v1.POST("/login", controllers.LoginHandler)
+		v1.POST("/AdminRegister", controllers.AdminRegisterHandler)
+		v1.POST("/AdminLogin", controllers.AdminLoginHandler)
 		v1.Use(middlewares.JWTAuthMiddleware())
 		{
 
 		}
+	}
+	v2 := r.Group("/page")
+	{
+		v2.GET("/HomePage", controllers.SBHbasic)
+		v2.GET("/HomePage/:page", controllers.ScoreBookHandle)
+		v2.GET("/LoginPage", controllers.LoginPageHandle)
+		v2.GET("/RegisterPage", controllers.RegisterPageHandle)
+		v2.GET("/ProfilePage", controllers.ProfilePageHandle)
 	}
 	zap.L().Info("SetUp Server ...")
 	return r

@@ -43,3 +43,38 @@ func InsertUser(p *models.ParamSignUp) models.ResCode {
 	}
 	return models.CodeSuccess
 }
+
+func CheckAdminExist(account string) (bool, models.ResCode) {
+	var u models.User
+	result := DB.Where("username = ?", account).First(&u)
+	if result.RowsAffected == 0 {
+		return true, models.CodeSuccess
+	}
+	if result.RowsAffected != 0 {
+		return false, models.CodeUserExist
+	}
+	return false, models.CodeServerBusy
+}
+
+func InsertAdmin(p *models.Admin) models.ResCode {
+	var u models.Admin
+	u.Username = p.Username
+	u.Password = md5.Md5(p.Password)
+	result := DB.Create(&u)
+	if result.Error != nil {
+		return models.CodeServerBusy
+	}
+	return models.CodeSuccess
+}
+
+func AdminLogin(p *models.Admin) models.ResCode {
+	var u models.Admin
+	result := DB.Where("username = ? AND password = ?", p.Username, p.Password).First(&u)
+	if result.RowsAffected == 0 {
+		return models.CodeUserNotExist
+	}
+	if u.AdminID == p.AdminID {
+		return models.CodeSuccess
+	}
+	return models.CodeUserNotExist
+}

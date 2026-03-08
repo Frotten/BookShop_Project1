@@ -24,3 +24,12 @@ func GetBooksByPage(page int) ([]*models.Book, int64, error) {
 	err := DB.Limit(PageSize).Offset(offset).Find(&Books).Error
 	return Books, TotalPage, err
 }
+
+func GetBooksPageByScore(page int64) ([]*models.Book, int64, error) {
+	var Books []*models.Book
+	var TotalPage int64
+	DB.Model(&models.Book{}).Count(&TotalPage)
+	offset := (page - 1) * PageSize
+	err := DB.Order("score DESC").Limit(PageSize).Offset(int(offset)).Find(&Books).Error //从高到低对分数排序后分页查询（加上Where还能筛选）
+	return Books, TotalPage, err
+}

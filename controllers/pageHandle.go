@@ -6,10 +6,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func HomePageHandle(c *gin.Context) {
-	c.HTML(http.StatusOK, "Home.html", nil)
-}
-
 func LoginPageHandle(c *gin.Context) {
 	c.HTML(http.StatusOK, "Login.html", nil)
 }
@@ -20,4 +16,8 @@ func ProfilePageHandle(c *gin.Context) {
 
 func RegisterPageHandle(c *gin.Context) {
 	c.HTML(http.StatusOK, "Register.html", nil)
+}
+
+func HomePageHandleWithInfo(c *gin.Context, Info interface{}) {
+	c.HTML(http.StatusOK, "Home.html", Info)
 }

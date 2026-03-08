@@ -27,7 +27,7 @@ func SignUpHandler(c *gin.Context) {
 		HandleResponse(c, models.CodeServerBusy)
 		return
 	}
-	HandleResponse(c, models.CodeSuccess)
+	HandleSuccess(c, nil)
 }
 
 func LoginHandler(c *gin.Context) {
@@ -95,4 +95,44 @@ func RefreshHandler(c *gin.Context) {
 	HandleSuccess(c, gin.H{
 		"access_token": newAccess,
 	})
+}
+
+func AdminRegisterHandler(c *gin.Context) {
+	var A models.Admin
+	if err := c.ShouldBind(&A); err != nil {
+		zap.L().Error("AdminRegisterHandler", zap.Error(err))
+		HandleResponse(c, models.CodeInvalidParam)
+		return
+	}
+	err := logic.AdminRegister(&A)
+	if err != models.CodeSuccess {
+		zap.L().Error("logic.AdminRegister failed")
+		if err == models.CodeUserExist {
+			HandleResponse(c, models.CodeUserExist)
+			return
+		}
+		HandleResponse(c, models.CodeServerBusy)
+		return
+	}
+	HandleSuccess(c, nil)
+}
+
+func AdminLoginHandler(c *gin.Context) {
+	var A models.Admin
+	if err := c.ShouldBind(&A); err != nil {
+		zap.L().Error("AdminLoginHandler", zap.Error(err))
+		HandleResponse(c, models.CodeInvalidParam)
+		return
+	}
+	err := logic.AdminLogin(&A)
+	if err != models.CodeSuccess {
+		zap.L().Error("logic.AdminLogin failed")
+		if err == models.CodeInvalidPassword || err == models.CodeUserNotExist {
+			HandleResponse(c, models.CodeInvalidPassword)
+			return
+		}
+		HandleResponse(c, models.CodeServerBusy)
+		return
+	}
+	HandleSuccess(c, nil)
 }
