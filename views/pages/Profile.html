@@ -9,9 +9,15 @@
 
 <header class="navbar">
     <h1>📚 网络书城</h1>
-    <div>
+    <div class="nav-right">
         <a href="/HomePage">首页</a>
-        <button onclick="logout()">退出</button>
+        <div id="auth-area" style="display:none; align-items:center; gap:12px;">
+            <button onclick="logout()">退出</button>
+        </div>
+        <div id="guest-area" style="display:flex; align-items:center; gap:12px;">
+            <a href="/LoginPage" class="btn-link">登录</a>
+            <a href="/RegisterPage" class="btn-link">注册</a>
+        </div>
     </div>
 </header>
 
@@ -37,5 +43,12 @@
 </div>
 
 <script src="/static/js/CommonScript.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    checkAuth().then(function(loggedIn) {
+        updateNavbar(loggedIn);
+    });
+});
+</script>
 </body>
 </html>

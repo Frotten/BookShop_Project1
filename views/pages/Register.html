@@ -6,11 +6,18 @@
     <link rel="stylesheet" href="/static/css/CommonStyle.css">
 </head>
 <body class="auth-body">
+<header class="navbar" style="position:absolute; top:0; left:0; right:0;">
+    <h1>📚 网络书城</h1>
+    <div class="nav-right">
+        <a href="/HomePage">首页</a>
+        <a href="/LoginPage" class="btn-link">登录</a>
+    </div>
+</header>
 
 <div class="auth-card">
     <h2>用户注册</h2>
 
-    <form id="registerForm" action="/api/v1/register" method="post">
+    <form id="registerForm">
         <input type="text" id="username" name="username" placeholder="用户名" required>
         <input type="email" id="Email" name="email" placeholder="邮箱" required>
         <input type="password" id="Password" name="password" placeholder="密码" required>
@@ -35,5 +42,31 @@
 </div>
 
 <script src="/static/js/CommonScript.js"></script>
+<script>
+document.getElementById("registerForm").addEventListener("submit", function(e) {
+    e.preventDefault();
+    var form = e.target;
+    var fd = new FormData(form);
+    var obj = {};
+    fd.forEach(function(v,k){ obj[k]=v; });
+    obj.gender = parseInt(obj.gender) || 0;
+    fetch("/api/v1/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(obj)
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.code === CODE_SUCCESS) {
+            alert("注册成功，请登录");
+            window.location.href = "/LoginPage";
+        } else {
+            alert(data.msg || "注册失败");
+        }
+    })
+    .catch(() => alert("注册请求失败"));
+});
+</script>
 </body>
 </html>

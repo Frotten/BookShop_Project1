@@ -6,13 +6,19 @@
     <link rel="stylesheet" href="/static/css/CommonStyle.css">
 </head>
 <body class="auth-body">
-
+<header class="navbar" style="position:absolute; top:0; left:0; right:0;">
+    <h1>📚 网络书城</h1>
+    <div class="nav-right">
+        <a href="/HomePage">首页</a>
+        <a href="/RegisterPage" class="btn-link">注册</a>
+    </div>
+</header>
 <div class="auth-card">
     <h2>用户登录</h2>
 
-    <form id="loginForm" action="/api/v1/login" method="post">
-        <input type="text" name="username" placeholder="用户名" required>
-        <input type="password" name="password" placeholder="密码" required>
+    <form id="loginForm">
+        <input type="text" id="username" name="username" placeholder="用户名" required>
+        <input type="password" id="password" name="password" placeholder="密码" required>
         <button type="submit">登录</button>
     </form>
 
@@ -22,5 +28,33 @@
 </div>
 
 <script src="/static/js/CommonScript.js"></script>
+<script>
+document.getElementById("loginForm").addEventListener("submit", function(e) {
+    e.preventDefault();
+    fetch("/api/v1/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+            username: document.getElementById("username").value,
+            password: document.getElementById("password").value
+        })
+    })
+    .then(res => res.json())
+    .then(function(data) {
+        var token = null;
+        if (data && data.code === 1000 && data.data) {
+            token = typeof data.data === "string" ? data.data : data.data.access_token;
+        }
+        if (token) {
+            setAccessToken(token);
+            window.location.href = "/HomePage";
+        } else {
+            alert(data && data.msg ? data.msg : "登录失败");
+        }
+    })
+    .catch(function(e) { console.error(e); alert("登录请求失败"); });
+});
+</script>
 </body>
 </html>

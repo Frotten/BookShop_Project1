@@ -12,7 +12,7 @@ import (
 
 func SignUpHandler(c *gin.Context) {
 	var p models.ParamSignUp
-	if err := c.ShouldBind(&p); err != nil {
+	if err := c.ShouldBindJSON(&p); err != nil {
 		zap.L().Error("SignUpHandler", zap.Error(err))
 		HandleResponse(c, models.CodeInvalidParam)
 		return
@@ -32,7 +32,7 @@ func SignUpHandler(c *gin.Context) {
 
 func LoginHandler(c *gin.Context) {
 	var p models.ParamLogin
-	if err := c.ShouldBind(&p); err != nil {
+	if err := c.ShouldBindJSON(&p); err != nil {
 		zap.L().Error("LoginHandler", zap.Error(err))
 		HandleResponse(c, models.CodeInvalidParam)
 		return
