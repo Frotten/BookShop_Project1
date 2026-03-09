@@ -37,6 +37,9 @@ func SetUp() *gin.Engine {
 		v2.GET("/LoginPage", controllers.LoginPageHandle)
 		v2.GET("/RegisterPage", controllers.RegisterPageHandle)
 		v2.GET("/ProfilePage", controllers.ProfilePageHandle)
+		v2.GET("/AdminLoginPage", controllers.AdminLoginPageHandle)
+		v2.GET("/AdminRegisterPage", controllers.AdminRegisterPageHandle)
+		v2.GET("/AdminHomePage", controllers.AdminHomePageHandle)
 	}
 	zap.L().Info("SetUp Server ...")
 	return r

@@ -62,5 +62,10 @@ func AdminRegister(p *models.Admin) models.ResCode {
 }
 
 func AdminLogin(p *models.Admin) models.ResCode {
-	mysql.AdminLogin(&p)
+	err := mysql.AdminLogin(p)
+	if err != models.CodeSuccess {
+		zap.L().Error("logic.AdminLogin failed")
+		return err
+	}
+	return models.CodeSuccess
 }

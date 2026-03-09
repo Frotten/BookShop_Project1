@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>首页 - 网络书城</title>
+    <link rel="stylesheet" href="/static/css/CommonStyle.css">
+</head>
+<body>
+
+<header class="navbar">
+    <h1>📚 网络书城</h1>
+    <div class="nav-right">
+    </div>
+</header>
+
+<div class="container">
+    <h2>欢迎来到网络书城管理员界面！</h2>
+    <p>在这里，您可以管理图书、订单和用户等信息。</p>
+</div>
+
+<script src="/static/js/CommonScript.js"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        checkAuth().then(function(loggedIn) {
+            updateNavbar(loggedIn);
+        });
+    });
+</script>
+</body>
+</html>

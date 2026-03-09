@@ -9,8 +9,8 @@
 <header class="navbar" style="position:absolute; top:0; left:0; right:0;">
     <h1>📚 网络书城</h1>
     <div class="nav-right">
-        <a href="/HomePage">首页</a>
-        <a href="/RegisterPage" class="btn-link">注册</a>
+        <a href="/page/HomePage">首页</a>
+        <a href="/page/RegisterPage" class="btn-link">注册</a>
     </div>
 </header>
 <div class="auth-card">
@@ -23,7 +23,7 @@
     </form>
 
     <p class="switch-link">
-        没有账号？<a href="/RegisterPage">去注册</a>
+        没有账号？<a href="/page/RegisterPage">去注册</a>
     </p>
 </div>
 
@@ -31,7 +31,7 @@
 <script>
 document.getElementById("loginForm").addEventListener("submit", function(e) {
     e.preventDefault();
-    fetch("/api/v1/login", {
+    fetch("/api/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -48,7 +48,7 @@ document.getElementById("loginForm").addEventListener("submit", function(e) {
         }
         if (token) {
             setAccessToken(token);
-            window.location.href = "/HomePage";
+            window.location.href = "/page/HomePage";
         } else {
             alert(data && data.msg ? data.msg : "登录失败");
         }

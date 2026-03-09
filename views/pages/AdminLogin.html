@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>登录 - 网络书城</title>
+    <link rel="stylesheet" href="/static/css/CommonStyle.css">
+</head>
+<body class="auth-body">
+<header class="navbar" style="position:absolute; top:0; left:0; right:0;">
+    <h1>📚 网络书城</h1>
+</header>
+<div class="auth-card">
+    <h2>管理员登录</h2>
+
+    <form id="AdminLoginForm" name="AdminLoginForm">
+        <input type="text" id="username" name="username" placeholder="用户名" required>
+        <input type="password" id="password" name="password" placeholder="密码" required>
+        <button type="submit">登录</button>
+    </form>
+
+</div>
+
+<script src="/static/js/CommonScript.js"></script>
+<script>
+    document.getElementById("AdminLoginForm").addEventListener("submit", function(e) {
+        e.preventDefault();
+        fetch("/api/AdminLogin", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({
+                username: document.getElementById("username").value,
+                password: document.getElementById("password").value
+            })
+        })
+            .then(res => res.json())
+            .then(function(data) {
+                if (data && data.code === 1000) {
+                    window.location.href = "/page/AdminHomePage";
+                } else {
+                    alert(data && data.msg ? data.msg : "登录失败");
+                }
+            })
+            .catch(function(e) { console.error(e); alert("登录请求失败"); });
+    });
+</script>
+</body>
+</html>

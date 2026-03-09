@@ -19,6 +19,6 @@ type RefreshToken struct { //刷新令牌模型,可以用Redis进行快速缓存
 
 type Admin struct {
 	AdminID  int64  `json:"admin_id" db:"admin_id" gorm:"primaryKey;autoIncrement"`
-	Username string `json:"username" db:"username" gorm:"unique;not null;size:30"`
-	Password string `json:"password" db:"password" gorm:"not null;size:255"`
+	Username string `json:"username" db:"username" gorm:"unique;not null;size:30" form:"username"`
+	Password string `json:"password" db:"password" gorm:"not null;size:255" form:"password"`
 }

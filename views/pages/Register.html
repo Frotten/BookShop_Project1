@@ -9,8 +9,8 @@
 <header class="navbar" style="position:absolute; top:0; left:0; right:0;">
     <h1>📚 网络书城</h1>
     <div class="nav-right">
-        <a href="/HomePage">首页</a>
-        <a href="/LoginPage" class="btn-link">登录</a>
+        <a href="/page/HomePage">首页</a>
+        <a href="/page/LoginPage" class="btn-link">登录</a>
     </div>
 </header>
 
@@ -37,7 +37,7 @@
     </form>
 
     <p class="switch-link">
-        已有账号？<a href="/LoginPage">去登录</a>
+        已有账号？<a href="/page/LoginPage">去登录</a>
     </p>
 </div>
 
@@ -50,7 +50,7 @@ document.getElementById("registerForm").addEventListener("submit", function(e) {
     var obj = {};
     fd.forEach(function(v,k){ obj[k]=v; });
     obj.gender = parseInt(obj.gender) || 0;
-    fetch("/api/v1/register", {
+    fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

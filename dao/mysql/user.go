@@ -69,12 +69,9 @@ func InsertAdmin(p *models.Admin) models.ResCode {
 
 func AdminLogin(p *models.Admin) models.ResCode {
 	var u models.Admin
-	result := DB.Where("username = ? AND password = ?", p.Username, p.Password).First(&u)
+	result := DB.Where("username = ? AND password = ?", p.Username, md5.Md5(p.Password)).First(&u)
 	if result.RowsAffected == 0 {
 		return models.CodeUserNotExist
 	}
-	if u.AdminID == p.AdminID {
-		return models.CodeSuccess
-	}
-	return models.CodeUserNotExist
+	return models.CodeSuccess
 }

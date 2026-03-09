@@ -3,6 +3,8 @@ const CODE_SUCCESS = 1000;
 const CODE_INVALID_TOKEN = 1007;
 const CODE_NEED_LOGIN = 1008;
 
+console.log("CommonScript loaded");
+
 function getAccessToken() {
     return localStorage.getItem(ACCESS_TOKEN_KEY);
 }
@@ -33,7 +35,9 @@ function parseJwtPayload(token) {
 function isAccessTokenExpired(token) {
     if (!token) return true;
     const payload = parseJwtPayload(token);
-    if (!payload || !payload.exp) return true;
+
+    // 如果解析失败或没有 exp 字段，则认为“未过期”，交给后端校验
+    if (!payload || !payload.exp) return false;
     const now = Math.floor(Date.now() / 1000);
     return payload.exp <= now + 30;
 }
@@ -75,14 +79,14 @@ async function checkAuth() {
 function updateNavbar(isLoggedIn) {
     const authArea = document.getElementById("auth-area");
     const guestArea = document.getElementById("guest-area");
-    if (authArea) authArea.style.display = isLoggedIn ? "flex" : "none";
     if (guestArea) guestArea.style.display = isLoggedIn ? "none" : "flex";
+    if (authArea) authArea.style.display = isLoggedIn ? "flex" : "none";
 }
 
 // 退出登录
 function logout() {
     clearAccessToken();
-    window.location.href = "/HomePage";
+    window.location.href = "/page/HomePage";
 }
 
 function addToCart(bookId) {
@@ -90,7 +94,7 @@ function addToCart(bookId) {
     const headers = { "Content-Type": "application/json" };
     if (token) headers["Authorization"] = "Bearer " + token;
 
-    fetch("/api/v1/cart", {
+    fetch("/api/cart", {
         method: "POST",
         headers: headers,
         credentials: "include",
@@ -100,7 +104,7 @@ function addToCart(bookId) {
         .then(data => {
             if (data.code === CODE_NEED_LOGIN || data.code === CODE_INVALID_TOKEN) {
                 if (confirm("请先登录后再操作")) {
-                    window.location.href = "/LoginPage";
+                    window.location.href = "/page/LoginPage";
                 }
                 return;
             }

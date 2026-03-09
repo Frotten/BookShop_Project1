@@ -10,12 +10,24 @@ func LoginPageHandle(c *gin.Context) {
 	c.HTML(http.StatusOK, "Login.html", nil)
 }
 
-func ProfilePageHandle(c *gin.Context) {
-	c.HTML(http.StatusOK, "Profile.html", nil)
-}
-
 func RegisterPageHandle(c *gin.Context) {
 	c.HTML(http.StatusOK, "Register.html", nil)
+}
+
+func AdminLoginPageHandle(c *gin.Context) {
+	c.HTML(http.StatusOK, "AdminLogin.html", nil)
+}
+
+func AdminRegisterPageHandle(c *gin.Context) {
+	c.HTML(http.StatusOK, "AdminRegister.html", nil)
+}
+
+func AdminHomePageHandleWithInfo(c *gin.Context, Info interface{}) {
+	c.HTML(http.StatusOK, "AdminHomePage.html", Info)
+}
+
+func ProfilePageHandle(c *gin.Context) {
+	c.HTML(http.StatusOK, "Profile.html", nil)
 }
 
 func HomePageHandleWithInfo(c *gin.Context, Info interface{}) {
