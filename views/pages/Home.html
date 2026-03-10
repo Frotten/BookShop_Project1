@@ -24,13 +24,15 @@
 <div class="container">
     <h2>图书列表</h2>
     <div class="grid">
-        {{ range .books }}
+        {{ range .Data }}
         <div class="book-card">
             <h3>{{ .Title }}</h3>
             <p>作者：{{ .Author }}</p>
             <p class="price">￥{{ .Price }}</p>
             <button onclick="addToCart({{ .ID }})">加入购物车</button>
         </div>
+        {{ else }}
+        <p>暂无图书</p>
         {{ end }}
     </div>
 </div>
