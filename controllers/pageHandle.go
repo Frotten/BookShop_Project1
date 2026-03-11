@@ -22,8 +22,12 @@ func AdminRegisterPageHandle(c *gin.Context) {
 	c.HTML(http.StatusOK, "AdminRegister.html", nil)
 }
 
+func AdminHomePageHandle(c *gin.Context) {
+	AdminHomePageHandleWithInfo(c, nil)
+}
+
 func AdminHomePageHandleWithInfo(c *gin.Context, Info interface{}) {
-	c.HTML(http.StatusOK, "AdminHomePage.html", Info)
+	c.HTML(http.StatusOK, "AdminHome.html", Info)
 }
 
 func ProfilePageHandle(c *gin.Context) {

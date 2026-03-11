@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>添加书籍</title>
+    <link rel="stylesheet" href="/static/css/CommonStyle.css">
+</head>
+
+<body>
+
+<header class="navbar">
+    <h2>添加书籍</h2>
+    <div class="nav-right">
+        <a href="/page/AdminHomePage" class="btn-link">返回首页</a>
+    </div>
+</header>
+
+<div class="container">
+
+    <div class="auth-card" style="width:420px;margin:auto">
+
+        <h2>新增书籍</h2>
+
+        <form id="addBookForm">
+
+            <input type="text" id="title" placeholder="书名" required>
+
+            <input type="text" id="author" placeholder="作者" required>
+
+            <input type="text" id="publisher" placeholder="出版社" required>
+
+            <input type="number" id="stock" placeholder="库存" required>
+
+            <input type="number" id="price" placeholder="价格(单位分，如3999表示39.99)" required>
+
+            <input type="text" id="cover_image" placeholder="封面图片URL">
+
+            <input type="text" id="tags" placeholder="标签(用逗号分隔，例如: 小说,历史,文学)">
+
+            <button type="submit">添加书籍</button>
+
+        </form>
+
+    </div>
+
+</div>
+
+
+<script>
+
+    document.getElementById("addBookForm").addEventListener("submit", async function(e){
+
+        e.preventDefault()
+
+// 处理tags
+        let tagStr = document.getElementById("tags").value
+        let tagArr = []
+
+        if(tagStr.trim() !== ""){
+            tagArr = tagStr.split(",").map(t => t.trim())
+        }
+
+// 构建JSON
+        const data = {
+            title: document.getElementById("title").value,
+            author: document.getElementById("author").value,
+            publisher: document.getElementById("publisher").value,
+            stock: parseInt(document.getElementById("stock").value),
+            sales: parseInt(document.getElementById("sales").value || 0),
+            price: parseInt(document.getElementById("price").value),
+            score: parseInt(document.getElementById("score").value || 0),
+            cover_image: document.getElementById("cover_image").value,
+            tags: tagArr
+        }
+        try{
+            const resp = await fetch("/api/v1/book/add",{
+                method:"POST",
+                headers:{
+                    "Content-Type":"application/json"
+                },
+                credentials:"include",
+                body:JSON.stringify(data)
+            })
+            const result = await resp.json()
+            if(result === 1000){
+                alert("添加成功")
+                window.location.href="/Home"
+            }else{
+                alert("添加失败")
+            }
+        }catch(err){
+            alert("请求失败")
+        }
+    })
+</script>
+
+</body>
+</html>

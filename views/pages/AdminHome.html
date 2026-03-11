@@ -18,6 +18,45 @@
     <p>在这里，您可以管理图书、订单和用户等信息。</p>
 </div>
 
+<div class="grid">
+    <!-- 图书管理 -->
+    <div class="book-card">
+        <h3>📚 图书管理</h3>
+        <p>添加、修改或删除书籍信息。</p>
+        <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
+            <button onclick="location.href='/admin/book/add'">添加书籍</button>
+            <button onclick="location.href='/admin/book/list'">管理书籍</button>
+            <button onclick="location.href='/admin/book/delete'">删除书籍</button>
+        </div>
+    </div>
+    <!-- 订单管理 -->
+    <div class="book-card">
+        <h3>📦 订单管理</h3>
+        <p>查看并处理用户订单。</p>
+        <div style="margin-top:12px; display:flex; gap:10px;">
+            <button onclick="location.href='/admin/order/list'">查看订单</button>
+            <button onclick="location.href='/admin/order/manage'">订单处理</button>
+        </div>
+    </div>
+    <!-- 用户管理 -->
+    <div class="book-card">
+        <h3>👤 用户管理</h3>
+        <p>查看、管理或封禁用户。</p>
+        <div style="margin-top:12px; display:flex; gap:10px;">
+            <button onclick="location.href='/admin/user/list'">用户列表</button>
+            <button onclick="location.href='/admin/user/manage'">用户管理</button>
+        </div>
+    </div>
+    <!-- 数据统计 -->
+    <div class="book-card">
+        <h3>📊 数据统计</h3>
+        <p>查看商城运营数据。</p>
+        <div style="margin-top:12px;">
+            <button onclick="location.href='/admin/status'">查看 统计</button>
+        </div>
+    </div>
+</div>
+
 <script src="/static/js/CommonScript.js"></script>
 <script>
     document.addEventListener("DOMContentLoaded", function() {

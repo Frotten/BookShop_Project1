@@ -33,3 +33,8 @@ func GetBooksPageByScore(page int64) ([]*models.Book, int64, error) {
 	err := DB.Order("score DESC").Limit(PageSize).Offset(int(offset)).Find(&Books).Error //从高到低对分数排序后分页查询（加上Where还能筛选）
 	return Books, TotalPage, err
 }
+
+func AddBook(book *models.Book) error {
+	result := DB.Create(book)
+	return result.Error
+}

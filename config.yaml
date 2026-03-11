@@ -13,18 +13,18 @@ log:
   max_age : 30
 
 mysql:
-  host: "127.0.0.1"
+  host: "192.168.56.101"
   port: 3306
-  user: "root"
+  user: "bookuser"
   password: "zheshimima"
-  dbname: "Shop1"
+  dbname: "bookstore"
 
 redis:
   host: "192.168.56.101"
   port: 6379
   db : 0
   password : "zheshimima"
-  pool_size : 100
+  pool_size : 200
 
 rabbitmq:
   host: "192.168.56.101"

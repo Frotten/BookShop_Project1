@@ -25,7 +25,7 @@ func AdminRegisterHandler(c *gin.Context) {
 		HandleResponse(c, models.CodeServerBusy)
 		return
 	}
-	HandleSuccess(c, nil)
+	AdminLoginPageHandle(c)
 }
 
 func AdminLoginHandler(c *gin.Context) {
@@ -46,9 +46,4 @@ func AdminLoginHandler(c *gin.Context) {
 		return
 	}
 	HandleSuccess(c, nil)
-}
-
-func AdminHomePageHandle(c *gin.Context) {
-	//获取管理员所需要的方法，并发送
-	AdminHomePageHandleWithInfo(c, nil)
 }

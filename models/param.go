@@ -13,3 +13,13 @@ type ParamLogin struct {
 	Username string `json:"username" form:"username" binding:"required"`
 	Password string `json:"password" form:"password" binding:"required"`
 }
+
+type AddBookParam struct {
+	Title      string   `json:"title" binding:"required"`
+	Author     string   `json:"author" binding:"required"`
+	Publisher  string   `json:"publisher" binding:"required"`
+	Stock      int64    `json:"stock" binding:"required"`
+	Price      int64    `json:"price" binding:"required"`
+	CoverImage string   `json:"cover_image"`
+	Tags       []string `json:"tags"`
+}

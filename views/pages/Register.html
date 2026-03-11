@@ -60,7 +60,7 @@ document.getElementById("registerForm").addEventListener("submit", function(e) {
     .then(data => {
         if (data.code === CODE_SUCCESS) {
             alert("注册成功，请登录");
-            window.location.href = "/LoginPage";
+            window.location.href = "/page/LoginPage";
         } else {
             alert(data.msg || "注册失败");
         }

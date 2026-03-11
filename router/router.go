@@ -41,6 +41,26 @@ func SetUp() *gin.Engine {
 		v2.GET("/AdminRegisterPage", controllers.AdminRegisterPageHandle)
 		v2.GET("/AdminHomePage", controllers.AdminHomePageHandle)
 	}
+	v3 := r.Group("/admin")
+	{
+		//v3.GET("/status", controllers.AdminStatusHandle) //运营统计
+		book := v3.Group("/book") //管理员对书籍的增删改查
+		{
+			book.GET("/add", controllers.AdminAddBookHandle)
+			//book.GET("/list", controllers.AdminListBookHandle)
+			//book.DELETE("/delete", controllers.AdminDeleteBookHandle)
+		}
+		//user := v3.Group("/user")
+		//{
+		//	user.GET("/list", controllers.AdminListUserHandle)
+		//	user.GET("/manage", controllers.AdminManageUserHandle)
+		//}
+		//order := v3.Group("/order")
+		//{
+		//	order.GET("/list", controllers.AdminListOrderHandle)
+		//	order.GET("/manage", controllers.AdminManageOrderHandle)
+		//}
+	}
 	zap.L().Info("SetUp Server ...")
 	return r
 }
