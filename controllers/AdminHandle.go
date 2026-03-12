@@ -1,8 +1,10 @@
 package controllers
 
 import (
+	"Project1_Shop/dao/redis"
 	"Project1_Shop/logic"
 	"Project1_Shop/models"
+	"Project1_Shop/pkg/jwt"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -35,15 +37,50 @@ func AdminLoginHandler(c *gin.Context) {
 		HandleResponse(c, models.CodeInvalidParam)
 		return
 	}
-	err := logic.AdminLogin(&A)
-	if err != models.CodeSuccess {
+	res := logic.AdminLogin(&A)
+	if res != models.CodeSuccess {
 		zap.L().Error("logic.AdminLogin failed")
-		if err == models.CodeInvalidPassword || err == models.CodeUserNotExist {
+		if res == models.CodeInvalidPassword || res == models.CodeUserNotExist {
 			HandleResponse(c, models.CodeInvalidPassword)
 			return
 		}
 		HandleResponse(c, models.CodeServerBusy)
 		return
 	}
-	HandleSuccess(c, nil)
+	accessToken, err := jwt.GenAdminToken(A.AdminID, A.Username)
+	if err != nil {
+		zap.L().Error("jwt.GenToken failed", zap.Error(err))
+		HandleResponse(c, models.CodeServerBusy)
+		return
+	}
+
+	refreshToken, tokenHash, err := jwt.GenerateRefreshToken()
+	if err != nil {
+		zap.L().Error("jwt.GenerateRefreshToken failed", zap.Error(err))
+		HandleResponse(c, models.CodeServerBusy)
+		return
+	}
+	redis.RDB.Set(c, "auth:refresh:"+tokenHash, A.AdminID, jwt.TokenExpireDuration)
+
+	c.SetCookie(
+		"refresh_token",
+		refreshToken,
+		int(jwt.TokenExpireDuration.Seconds()),
+		"/",
+		"",
+		true,
+		true,
+	)
+	c.SetCookie(
+		"access_token",
+		accessToken,
+		int(jwt.AccessExpireDuration.Seconds()),
+		"/",
+		"",
+		true,
+		true,
+	)
+	HandleSuccess(c, gin.H{
+		"access_token": accessToken,
+	})
 }

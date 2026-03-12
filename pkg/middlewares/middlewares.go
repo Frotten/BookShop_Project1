@@ -4,14 +4,15 @@ import (
 	"Project1_Shop/controllers"
 	"Project1_Shop/models"
 	"Project1_Shop/pkg/jwt"
+	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 )
 
-func JWTAuthMiddleware() func(c *gin.Context) {
+func JWTAuthMiddleware() func(c *gin.Context) { //存在问题：用户登录后会被卡在NeedLogin处
 	return func(c *gin.Context) {
-		authHeader := c.Request.Header.Get("Authorization")
+		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
 			controllers.HandleResponse(c, models.CodeNeedLogin)
 			c.Abort()
@@ -32,6 +33,43 @@ func JWTAuthMiddleware() func(c *gin.Context) {
 		}
 		// 将当前请求的userID信息保存到请求的上下文c上
 		c.Set("userID", mc.UserID)
+		c.Set("username", mc.Username)
+		c.Set("permission", mc.Permission)
 		c.Next() // 后续的处理函数可以用过c.Get(ctxUserIDKey)来获取当前请求的用户信息
+	}
+}
+
+func AdminOnlyMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		role, exists := c.Get("permission")
+		if !exists || role != "admin" {
+			c.JSON(http.StatusFound, gin.H{
+				"error": "admin only",
+			})
+			c.Abort()
+			return
+		}
+		c.Next()
+	}
+}
+
+func CookieAuthMiddleware() gin.HandlerFunc { //页面跳转无法将token写入消息头，故改用cookie
+	return func(c *gin.Context) {
+		token, err := c.Cookie("access_token")
+		if err != nil {
+			c.Redirect(302, "/page/LoginPage")
+			c.Abort()
+			return
+		}
+		claims, err := jwt.ParseToken(token)
+		if err != nil {
+			c.Redirect(302, "/page/LoginPage")
+			c.Abort()
+			return
+		}
+		c.Set("userID", claims.UserID)
+		c.Set("username", claims.Username)
+		c.Set("permission", claims.Permission)
+		c.Next()
 	}
 }

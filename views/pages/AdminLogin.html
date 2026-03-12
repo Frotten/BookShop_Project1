@@ -24,10 +24,8 @@
 <script>
     document.getElementById("AdminLoginForm").addEventListener("submit", function(e) {
         e.preventDefault();
-        fetch("/api/AdminLogin", {
+        apiFetch("/api/AdminLogin", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
             body: JSON.stringify({
                 username: document.getElementById("username").value,
                 password: document.getElementById("password").value
@@ -35,7 +33,12 @@
         })
             .then(res => res.json())
             .then(function(data) {
-                if (data && data.code === 1000) {
+                var token = null;
+                if (data && data.code === 1000 && data.data) {
+                    token = typeof data.data === "string" ? data.data : data.data.access_token;
+                }
+                if (token) {
+                    setAccessToken(token);
                     window.location.href = "/page/AdminHomePage";
                 } else {
                     alert(data && data.msg ? data.msg : "登录失败");

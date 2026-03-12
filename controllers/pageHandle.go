@@ -37,3 +37,7 @@ func ProfilePageHandle(c *gin.Context) {
 func HomePageHandleWithInfo(c *gin.Context, Info interface{}) {
 	c.HTML(http.StatusOK, "Home.html", Info)
 }
+
+func AddBookPageHandle(c *gin.Context) {
+	c.HTML(http.StatusOK, "AddBook.html", nil)
+}

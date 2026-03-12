@@ -43,7 +43,7 @@ func LoginHandler(c *gin.Context) {
 		HandleResponse(c, code)
 		return
 	}
-	accessToken, err := jwt.GenToken(User.UserID)
+	accessToken, err := jwt.GenToken(User.UserID, User.Username)
 	if err != nil {
 		zap.L().Error("jwt.GenToken failed", zap.Error(err))
 		HandleResponse(c, models.CodeServerBusy)
@@ -70,6 +70,15 @@ func LoginHandler(c *gin.Context) {
 		"refresh_token",
 		refreshToken,
 		int(jwt.TokenExpireDuration.Seconds()),
+		"/",
+		"",
+		true,
+		true,
+	)
+	c.SetCookie(
+		"access_token",
+		accessToken,
+		int(jwt.AccessExpireDuration.Seconds()),
 		"/",
 		"",
 		true,

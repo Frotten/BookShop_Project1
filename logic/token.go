@@ -18,7 +18,6 @@ func Refresh(refreshToken string, c *gin.Context) (string, string, error) {
 	tokenHash := hex.EncodeToString(hash[:])
 
 	//var stored models.RefreshToken
-
 	//err := mysql.DB.Where("token_hash = ?", tokenHash).First(&stored).Error
 
 	ans, err := jwt.ParseToken(refreshToken)
@@ -40,7 +39,7 @@ func Refresh(refreshToken string, c *gin.Context) (string, string, error) {
 	redis.RDB.Del(c, "auth:refresh:"+tokenHash)
 
 	// 生成新 token
-	accessToken, _ := jwt.GenToken(ans.UserID)
+	accessToken, _ := jwt.GenToken(ans.UserID, ans.Username)
 	newRefresh, newHash, _ := jwt.GenerateRefreshToken()
 
 	mysql.DB.Create(&models.RefreshToken{

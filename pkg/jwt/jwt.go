@@ -12,22 +12,43 @@ import (
 )
 
 const TokenExpireDuration = 7 * 24 * time.Hour
+const AccessExpireDuration = 15 * time.Minute
 
 var mySecret = []byte("Doctor")
 
 type MyClaims struct {
-	UserID int64 `json:"user_id"`
+	UserID     int64  `json:"user_id"`
+	Username   string `json:"username"`
+	Permission string `json:"role"`
 	jwt.RegisteredClaims
 }
 
-func GenToken(userID int64) (Token string, err error) {
+func GenToken(userID int64, username string) (Token string, err error) {
 	c := MyClaims{
-		UserID: userID,
+		UserID:     userID,
+		Username:   username,
+		Permission: "user",
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute * 15)), //过期时间
-			IssuedAt:  jwt.NewNumericDate(time.Now()),                       //签发时间
-			NotBefore: jwt.NewNumericDate(time.Now()),                       //生效时间
-			Issuer:    "Shop",                                               //签发人
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(AccessExpireDuration)), //过期时间
+			IssuedAt:  jwt.NewNumericDate(time.Now()),                           //签发时间
+			NotBefore: jwt.NewNumericDate(time.Now()),                           //生效时间
+			Issuer:    "Shop",                                                   //签发人
+		},
+	}
+	Token, err = jwt.NewWithClaims(jwt.SigningMethodHS256, c).SignedString(mySecret) //使用HS256加密算法,并使用密钥进行签名
+	return
+}
+
+func GenAdminToken(userID int64, username string) (Token string, err error) {
+	c := MyClaims{
+		UserID:     userID,
+		Username:   username,
+		Permission: "admin",
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(AccessExpireDuration)), //过期时间
+			IssuedAt:  jwt.NewNumericDate(time.Now()),                           //签发时间
+			NotBefore: jwt.NewNumericDate(time.Now()),                           //生效时间
+			Issuer:    "Shop",                                                   //签发人
 		},
 	}
 	Token, err = jwt.NewWithClaims(jwt.SigningMethodHS256, c).SignedString(mySecret) //使用HS256加密算法,并使用密钥进行签名
@@ -40,9 +61,7 @@ func GenerateRefreshToken() (string, string, error) {
 	if err != nil {
 		return "", "", err
 	}
-
 	token := base64.URLEncoding.EncodeToString(b)
-
 	hash := sha256.Sum256([]byte(token))
 	tokenHash := hex.EncodeToString(hash[:])
 

@@ -31,10 +31,8 @@
 <script>
 document.getElementById("loginForm").addEventListener("submit", function(e) {
     e.preventDefault();
-    fetch("/api/login", {
+    apiFetch("/api/login", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({
             username: document.getElementById("username").value,
             password: document.getElementById("password").value

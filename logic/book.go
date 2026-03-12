@@ -8,6 +8,10 @@ import (
 
 func AddBook(p *models.AddBookParam) models.ResCode {
 	tagsJSON, _ := json.Marshal(p.Tags)
+	exist := mysql.ExistBook(p.Title)
+	if exist {
+		return models.CodeBookExist
+	}
 	book := &models.Book{
 		Title:      p.Title,
 		Author:     p.Author,

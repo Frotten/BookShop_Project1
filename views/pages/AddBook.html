@@ -45,50 +45,41 @@
 
 </div>
 
-
+<script src="/static/js/CommonScript.js"></script>
 <script>
 
     document.getElementById("addBookForm").addEventListener("submit", async function(e){
-
         e.preventDefault()
-
 // 处理tags
         let tagStr = document.getElementById("tags").value
         let tagArr = []
-
         if(tagStr.trim() !== ""){
             tagArr = tagStr.split(",").map(t => t.trim())
         }
-
 // 构建JSON
         const data = {
             title: document.getElementById("title").value,
             author: document.getElementById("author").value,
             publisher: document.getElementById("publisher").value,
             stock: parseInt(document.getElementById("stock").value),
-            sales: parseInt(document.getElementById("sales").value || 0),
             price: parseInt(document.getElementById("price").value),
-            score: parseInt(document.getElementById("score").value || 0),
             cover_image: document.getElementById("cover_image").value,
             tags: tagArr
         }
         try{
-            const resp = await fetch("/api/v1/book/add",{
-                method:"POST",
-                headers:{
-                    "Content-Type":"application/json"
-                },
-                credentials:"include",
-                body:JSON.stringify(data)
+            const resp = await apiFetch("/admin/book/add", {
+                method: "POST",
+                body: JSON.stringify(data)
             })
             const result = await resp.json()
-            if(result === 1000){
+            if(result.code === 1000){
                 alert("添加成功")
                 window.location.href="/Home"
             }else{
-                alert("添加失败")
+                alert("添加失败:" + result.msg)
             }
         }catch(err){
+            alert(err)
             alert("请求失败")
         }
     })

@@ -89,6 +89,20 @@ function logout() {
     window.location.href = "/page/HomePage";
 }
 
+function apiFetch(url, options = {}) {
+    const token = localStorage.getItem("access_token");
+
+    return fetch(url, {
+        ...options,
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + token,
+            ...(options.headers || {})
+        },
+        credentials: "include"
+    });
+}
+
 function addToCart(bookId) {
     const token = getAccessToken();
     const headers = { "Content-Type": "application/json" };

@@ -50,10 +50,8 @@ document.getElementById("registerForm").addEventListener("submit", function(e) {
     var obj = {};
     fd.forEach(function(v,k){ obj[k]=v; });
     obj.gender = parseInt(obj.gender) || 0;
-    fetch("/api/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
+    apiFetch("/api/register", {
+        method:"POST",
         body: JSON.stringify(obj)
     })
     .then(res => res.json())

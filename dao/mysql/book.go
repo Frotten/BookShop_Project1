@@ -38,3 +38,12 @@ func AddBook(book *models.Book) error {
 	result := DB.Create(book)
 	return result.Error
 }
+
+func ExistBook(Title string) bool {
+	var Book models.Book
+	result := DB.Where("title = ?", Title).First(&Book)
+	if result.RowsAffected == 0 {
+		return false
+	}
+	return true
+}

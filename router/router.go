@@ -25,10 +25,10 @@ func SetUp() *gin.Engine {
 		v1.POST("/login", controllers.LoginHandler)
 		v1.POST("/AdminRegister", controllers.AdminRegisterHandler)
 		v1.POST("/AdminLogin", controllers.AdminLoginHandler)
-		v1.Use(middlewares.JWTAuthMiddleware())
-		{
-
-		}
+		//Login := v1.Use(middlewares.JWTAuthMiddleware())
+		//{
+		//
+		//}
 	}
 	v2 := r.Group("/page")
 	{
@@ -36,17 +36,25 @@ func SetUp() *gin.Engine {
 		v2.GET("/HomePage/:page", controllers.ScoreBookHandle)
 		v2.GET("/LoginPage", controllers.LoginPageHandle)
 		v2.GET("/RegisterPage", controllers.RegisterPageHandle)
-		v2.GET("/ProfilePage", controllers.ProfilePageHandle)
 		v2.GET("/AdminLoginPage", controllers.AdminLoginPageHandle)
 		v2.GET("/AdminRegisterPage", controllers.AdminRegisterPageHandle)
-		v2.GET("/AdminHomePage", controllers.AdminHomePageHandle)
+		User := v2.Use(middlewares.CookieAuthMiddleware())
+		{
+			User.GET("/ProfilePage", controllers.ProfilePageHandle)
+		}
+		Admin := v2.Use(middlewares.CookieAuthMiddleware(), middlewares.AdminOnlyMiddleware())
+		{
+			Admin.GET("/AdminHomePage", controllers.AdminHomePageHandle)
+			Admin.GET("/AddBookPage", controllers.AddBookPageHandle)
+		}
 	}
 	v3 := r.Group("/admin")
+	v3.Use(middlewares.JWTAuthMiddleware(), middlewares.AdminOnlyMiddleware())
 	{
 		//v3.GET("/status", controllers.AdminStatusHandle) //运营统计
 		book := v3.Group("/book") //管理员对书籍的增删改查
 		{
-			book.GET("/add", controllers.AdminAddBookHandle)
+			book.POST("/add", controllers.AdminAddBookHandle)
 			//book.GET("/list", controllers.AdminListBookHandle)
 			//book.DELETE("/delete", controllers.AdminDeleteBookHandle)
 		}

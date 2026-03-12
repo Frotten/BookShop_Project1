@@ -17,6 +17,7 @@ const (
 	CodeServerBusy
 	CodeInvalidToken
 	CodeNeedLogin
+	CodeBookExist
 )
 
 var codeMsgMap = map[ResCode]string{
@@ -28,6 +29,7 @@ var codeMsgMap = map[ResCode]string{
 	CodeServerBusy:      "服务器繁忙，请稍后再试",
 	CodeInvalidToken:    "无效的Token",
 	CodeNeedLogin:       "需要登录",
+	CodeBookExist:       "书籍已存在",
 }
 
 func (rc ResCode) Msg() string {
