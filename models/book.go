@@ -10,7 +10,7 @@ type Book struct {
 	Stock      int64          `json:"stock" db:"stock" gorm:"not null"`
 	Sales      int64          `json:"sales" db:"sales" gorm:"not null"`
 	Price      int64          `json:"price" db:"price" gorm:"not null"` //Price和Score都用int64，前端显示时除以100,避免精度误差
-	Score      int64          `json:"score" db:"score"`
+	Score      int64          `json:"score" db:"score" gorm:"default:0"`
 	CoverImage string         `json:"cover_image" db:"cover_image" gorm:"size:255"`
 	Tags       datatypes.JSON `json:"tags" db:"tags" gorm:"type:json"` //切片用法
 }

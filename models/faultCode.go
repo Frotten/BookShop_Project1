@@ -18,6 +18,7 @@ const (
 	CodeInvalidToken
 	CodeNeedLogin
 	CodeBookExist
+	CodeBookNotExist
 )
 
 var codeMsgMap = map[ResCode]string{
@@ -30,6 +31,7 @@ var codeMsgMap = map[ResCode]string{
 	CodeInvalidToken:    "无效的Token",
 	CodeNeedLogin:       "需要登录",
 	CodeBookExist:       "书籍已存在",
+	CodeBookNotExist: 	 "书籍不存在",
 }
 
 func (rc ResCode) Msg() string {

@@ -46,7 +46,7 @@
             <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
                 <button onclick="location.href='/page/AddBookPage'">添加书籍</button>
                 <button onclick="location.href='/admin/book/list'">管理书籍</button>
-                <button onclick="location.href='/admin/book/delete'">删除书籍</button>
+                <button onclick="location.href='/page/DeleteBookPage'">删除书籍</button>
             </div>
         </div>
 
@@ -78,33 +78,20 @@
                 <button onclick="location.href='/admin/status'">查看统计</button>
             </div>
         </div>
-
     </div>
-
 </div>
-
-
 <!-- ================= 游客界面 ================= -->
-
 <div id="guest-panel" style="display:none; padding:40px; text-align:center;">
     <h2>当前未登录管理员</h2>
     <p>请退出后台页面</p>
 </div>
-
-
 <script src="/static/js/CommonScript.js"></script>
-
 <script>
-
     document.addEventListener("DOMContentLoaded", async function () {
-
         const loggedIn = await checkAuth();
-
         updateNavbar(loggedIn);
-
         const adminPanel = document.getElementById("admin-panel");
         const guestPanel = document.getElementById("guest-panel");
-
         if (loggedIn) {
             adminPanel.style.display = "block";
             guestPanel.style.display = "none";
@@ -112,9 +99,7 @@
             adminPanel.style.display = "none";
             guestPanel.style.display = "block";
         }
-
     });
 </script>
-
 </body>
 </html>

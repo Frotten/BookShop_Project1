@@ -8,7 +8,7 @@ import (
 
 func AddBook(p *models.AddBookParam) models.ResCode {
 	tagsJSON, _ := json.Marshal(p.Tags)
-	exist := mysql.ExistBook(p.Title)
+	exist := mysql.ExistBookByInfo(p.Title, p.Author, p.Publisher)
 	if exist {
 		return models.CodeBookExist
 	}
@@ -49,4 +49,25 @@ func BookToCache(book *models.Book) (*models.BookCache, error) {
 		CoverImage: book.CoverImage,
 		Tags:       tags,
 	}, nil
+}
+
+func GetBookByID(ID int64) (*models.Book, error) {
+	book, err := mysql.GetBookByID(ID)
+	if err != nil {
+		return nil, err
+	}
+	return book, nil
+}
+
+func DeleteBook(ID int64) models.ResCode {
+	exist := mysql.ExistBook(ID)
+	if !exist {
+		return models.CodeBookNotExist
+	}
+	_ = mysql.DeleteBook(ID)
+	exist = mysql.ExistBook(ID)
+	if !exist {
+		return models.CodeSuccess
+	}
+	return models.CodeServerBusy
 }

@@ -46,6 +46,7 @@ func SetUp() *gin.Engine {
 		{
 			Admin.GET("/AdminHomePage", controllers.AdminHomePageHandle)
 			Admin.GET("/AddBookPage", controllers.AddBookPageHandle)
+			Admin.GET("/DeleteBookPage", controllers.DeleteBookPageHandle)
 		}
 	}
 	v3 := r.Group("/admin")
@@ -55,8 +56,9 @@ func SetUp() *gin.Engine {
 		book := v3.Group("/book") //管理员对书籍的增删改查
 		{
 			book.POST("/add", controllers.AdminAddBookHandle)
+			book.GET("/delete/:book_id", controllers.DeleteBookParamHandle)
+			book.DELETE("/delete/:book_id", controllers.AdminDeleteBookHandle)
 			//book.GET("/list", controllers.AdminListBookHandle)
-			//book.DELETE("/delete", controllers.AdminDeleteBookHandle)
 		}
 		//user := v3.Group("/user")
 		//{

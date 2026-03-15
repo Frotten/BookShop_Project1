@@ -4,6 +4,8 @@ import (
 	"Project1_Shop/dao/mysql"
 	"Project1_Shop/logic"
 	"Project1_Shop/models"
+	"database/sql"
+	"errors"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -52,6 +54,44 @@ func AdminAddBookHandle(c *gin.Context) {
 	res := logic.AddBook(&B)
 	if res != models.CodeSuccess {
 		zap.L().Error("AdminAddBookHandle failed")
+		HandleResponse(c, res)
+		return
+	}
+	HandleSuccess(c, nil)
+}
+
+func DeleteBookParamHandle(c *gin.Context) {
+	IDString := c.Param("book_id")
+	ID, err := strconv.ParseInt(IDString, 10, 64)
+	if err != nil {
+		zap.L().Error("DeleteBookParamHandle failed", zap.Error(err))
+		HandleResponse(c, models.CodeInvalidParam)
+		return
+	}
+	Book, err := logic.GetBookByID(ID)
+	if err != nil {
+		zap.L().Error("DeleteBookParamHandle failed", zap.Error(err))
+		if errors.Is(err, sql.ErrNoRows) {
+			HandleResponse(c, models.CodeBookNotExist)
+			return
+		}
+		HandleResponse(c, models.CodeServerBusy)
+		return
+	}
+	HandleSuccess(c, Book)
+}
+
+func AdminDeleteBookHandle(c *gin.Context) {
+	IDString := c.Param("book_id")
+	ID, err := strconv.ParseInt(IDString, 10, 64)
+	if err != nil {
+		zap.L().Error("AdminDeleteBookHandle failed", zap.Error(err))
+		HandleResponse(c, models.CodeInvalidParam)
+		return
+	}
+	res := logic.DeleteBook(ID)
+	if res != models.CodeSuccess {
+		zap.L().Error("AdminDeleteBookHandle failed")
 		HandleResponse(c, res)
 		return
 	}

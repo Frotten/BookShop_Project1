@@ -39,11 +39,34 @@ func AddBook(book *models.Book) error {
 	return result.Error
 }
 
-func ExistBook(Title string) bool {
+func ExistBook(ID int64) bool {
 	var Book models.Book
-	result := DB.Where("title = ?", Title).First(&Book)
+	result := DB.Where("book_id = ?", ID).First(&Book)
 	if result.RowsAffected == 0 {
 		return false
 	}
 	return true
+}
+
+func ExistBookByInfo(Title, Author, Publisher string) bool {
+	var Book models.Book
+	result := DB.Where("title = ? AND author = ? AND publisher = ?", Title, Author, Publisher).First(&Book)
+	if result.RowsAffected == 0 {
+		return false
+	}
+	return true
+}
+
+func GetBookByID(ID int64) (*models.Book, error) {
+	var Book models.Book
+	result := DB.First(&Book, ID)
+	if result.RowsAffected == 0 {
+		return nil, result.Error
+	}
+	return &Book, result.Error
+}
+
+func DeleteBook(ID int64) error {
+	result := DB.Where("book_id = ?", ID).Delete(&models.Book{})
+	return result.Error
 }

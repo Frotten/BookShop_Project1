@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>删除书籍 - 网络书城</title>
+    <link rel="stylesheet" href="/static/css/CommonStyle.css">
+</head>
+<body>
+<header class="navbar">
+    <h1>📚 网络书城</h1>
+    <div class="nav-right">
+        <div id="auth-area" style="display:none; align-items:center; gap:10px;">
+            <span>管理员</span>
+            <a href="/page/AdminHomePage" class="btn-link">返回首页</a>
+            <button onclick="logout()">退出登录</button>
+        </div>
+        <div id="guest-area" style="display:none;">
+            <span>当前不是管理员</span>
+        </div>
+    </div>
+</header>
+<div class="container">
+    <h2>删除书籍</h2>
+    <p>输入书籍ID查询后删除</p>
+    <div style="display:flex; gap:30px; margin-top:20px;">
+        <!-- 左侧操作 -->
+        <div class="profile-card" style="width:380px;">
+            <h3 style="margin-bottom:16px;">🔎 查询书籍</h3>
+            <input id="bookID" type="number" placeholder="请输入书籍ID" style="margin-bottom:16px;">
+            <button style="width:100%; margin-bottom:12px;" onclick="searchBook()">
+                查询书籍
+            </button>
+            <button style="width:100%; background:#ef4444;" onclick="deleteBook()">
+                删除书籍
+            </button>
+        </div>
+        <!-- 右侧书籍信息 -->
+        <div class="profile-card" style="flex:1;" id="bookInfo">
+            <h3>📖 书籍信息</h3>
+            <p style="color:#888;">请先查询书籍</p>
+        </div>
+    </div>
+</div>
+<script src="/static/js/CommonScript.js"></script>
+<script>
+    let currentBook = null;
+    async function searchBook() {
+        const id = document.getElementById("bookID").value.trim();
+        if (!id) {
+            alert("请输入书籍ID");
+            return;
+        }
+        try {
+            const res = await apiFetch("/admin/book/delete/" + id,{
+                method: "GET"
+            })
+            const result = await res.json();
+            if (result.code !== 1000) {
+                alert("查询失败：" + result.msg);
+                return;
+            }
+            currentBook = result.data;
+            renderBook(currentBook);
+        } catch (err) {
+            alert("请求失败");
+        }
+    }
+    function renderBook(book) {
+
+        const panel = document.getElementById("bookInfo");
+
+        panel.innerHTML = `
+<h3>📖 书籍信息</h3>
+
+<div style="display:flex; gap:20px; align-items:flex-start; margin-top:10px;">
+
+    <!-- 封面 -->
+    <div style="flex-shrink:0;">
+        <img
+            src="${book.cover_image}"
+            alt="封面"
+            style="
+                width:140px;
+                height:200px;
+                object-fit:cover;
+                border-radius:8px;
+                box-shadow:0 2px 8px rgba(0,0,0,0.15);
+            "
+        >
+    </div>
+
+    <!-- 书籍信息 -->
+    <div style="flex:1;">
+        <p><b>ID：</b>${book.book_id}</p>
+        <p><b>书名：</b>${book.title}</p>
+        <p><b>作者：</b>${book.author}</p>
+        <p><b>出版：</b>${book.publisher}</p>
+        <p><b>价格：</b>￥${(book.price / 100).toFixed(2)}</p>
+        <p><b>库存：</b>${book.stock}</p>
+        <p><b>评分：</b>${(book.score / 100).toFixed(2)}</p>
+        <p><b>标签：</b>${book.tags}</p>
+    </div>
+
+</div>
+`;
+    }
+
+    async function deleteBook() {
+        if (!currentBook) {
+            alert("请先查询书籍");
+            return;
+        }
+        const ok = confirm("确定删除《" + currentBook.title + "》吗？");
+        if (!ok) return;
+        try {
+            const res = await apiFetch("/admin/book/delete/" + currentBook.book_id,{
+                method: "DELETE",
+                body: JSON.stringify({
+                    book_id: currentBook.book_id
+                })
+            });
+            const result = await res.json();
+            if (result.code === 1000) {
+                alert("删除成功");
+                location.href = "/page/AdminHomePage";
+            } else {
+                alert("删除失败：" + result.msg);
+            }
+        } catch (err) {
+            alert("请求失败");
+        }
+    }
+    document.addEventListener("DOMContentLoaded", async function () {
+        const loggedIn = await checkAuth();
+        updateNavbar(loggedIn);
+    });
+</script>
+</body>
+</html>

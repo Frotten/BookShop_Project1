@@ -74,7 +74,7 @@
             const result = await resp.json()
             if(result.code === 1000){
                 alert("添加成功")
-                window.location.href="/Home"
+                window.location.href="/page/AdminHomePage"
             }else{
                 alert("添加失败:" + result.msg)
             }

@@ -41,3 +41,7 @@ func HomePageHandleWithInfo(c *gin.Context, Info interface{}) {
 func AddBookPageHandle(c *gin.Context) {
 	c.HTML(http.StatusOK, "AddBook.html", nil)
 }
+
+func DeleteBookPageHandle(c *gin.Context) {
+	c.HTML(http.StatusOK, "DeleteBook.html", nil)
+}
