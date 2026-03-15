@@ -2,22 +2,22 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>登录 - 网络书城</title>
+    <title>管理员登录 - 网络书城</title>
     <link rel="stylesheet" href="/static/css/CommonStyle.css">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css" rel="stylesheet"/>
 </head>
 <body class="auth-body">
-<header class="navbar" style="position:absolute; top:0; left:0; right:0;">
-    <h1>📚 网络书城</h1>
+<header class="navbar" style="position:absolute; top:0; left:0; right:0; background:transparent; backdrop-filter:none; box-shadow:none;">
+    <h1><i class="ri-book-open-line"></i> 网络书城</h1>
 </header>
 <div class="auth-card">
-    <h2>管理员登录</h2>
+    <h2><i class="ri-lock-line"></i> 管理员登录</h2>
 
     <form id="AdminLoginForm" name="AdminLoginForm">
         <input type="text" id="username" name="username" placeholder="用户名" required>
         <input type="password" id="password" name="password" placeholder="密码" required>
-        <button type="submit">登录</button>
+        <button type="submit"><i class="ri-login-circle-line"></i> 登录</button>
     </form>
-
 </div>
 
 <script src="/static/js/CommonScript.js"></script>

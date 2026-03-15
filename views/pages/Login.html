@@ -4,22 +4,23 @@
     <meta charset="UTF-8">
     <title>登录 - 网络书城</title>
     <link rel="stylesheet" href="/static/css/CommonStyle.css">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css" rel="stylesheet"/>
 </head>
 <body class="auth-body">
-<header class="navbar" style="position:absolute; top:0; left:0; right:0;">
-    <h1>📚 网络书城</h1>
+<header class="navbar" style="position:absolute; top:0; left:0; right:0; background:transparent; backdrop-filter:none; box-shadow:none;">
+    <h1><i class="ri-book-open-line"></i> 网络书城</h1>
     <div class="nav-right">
-        <a href="/page/HomePage">首页</a>
-        <a href="/page/RegisterPage" class="btn-link">注册</a>
+        <a href="/page/HomePage"><i class="ri-home-line"></i> 首页</a>
+        <a href="/page/RegisterPage" class="btn-link"><i class="ri-user-add-line"></i> 注册</a>
     </div>
 </header>
 <div class="auth-card">
-    <h2>用户登录</h2>
+    <h2><i class="ri-login-circle-line"></i> 用户登录</h2>
 
     <form id="loginForm">
         <input type="text" id="username" name="username" placeholder="用户名" required>
         <input type="password" id="password" name="password" placeholder="密码" required>
-        <button type="submit">登录</button>
+        <button type="submit"><i class="ri-login-circle-line"></i> 登录</button>
     </form>
 
     <p class="switch-link">
@@ -29,30 +30,30 @@
 
 <script src="/static/js/CommonScript.js"></script>
 <script>
-document.getElementById("loginForm").addEventListener("submit", function(e) {
-    e.preventDefault();
-    apiFetch("/api/login", {
-        method: "POST",
-        body: JSON.stringify({
-            username: document.getElementById("username").value,
-            password: document.getElementById("password").value
+    document.getElementById("loginForm").addEventListener("submit", function(e) {
+        e.preventDefault();
+        apiFetch("/api/login", {
+            method: "POST",
+            body: JSON.stringify({
+                username: document.getElementById("username").value,
+                password: document.getElementById("password").value
+            })
         })
-    })
-    .then(res => res.json())
-    .then(function(data) {
-        var token = null;
-        if (data && data.code === 1000 && data.data) {
-            token = typeof data.data === "string" ? data.data : data.data.access_token;
-        }
-        if (token) {
-            setAccessToken(token);
-            window.location.href = "/page/HomePage";
-        } else {
-            alert(data && data.msg ? data.msg : "登录失败");
-        }
-    })
-    .catch(function(e) { console.error(e); alert("登录请求失败"); });
-});
+            .then(res => res.json())
+            .then(function(data) {
+                var token = null;
+                if (data && data.code === 1000 && data.data) {
+                    token = typeof data.data === "string" ? data.data : data.data.access_token;
+                }
+                if (token) {
+                    setAccessToken(token);
+                    window.location.href = "/page/HomePage";
+                } else {
+                    alert(data && data.msg ? data.msg : "登录失败");
+                }
+            })
+            .catch(function(e) { console.error(e); alert("登录请求失败"); });
+    });
 </script>
 </body>
 </html>

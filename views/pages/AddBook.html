@@ -2,61 +2,47 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>添加书籍</title>
+    <title>添加书籍 - 网络书城</title>
     <link rel="stylesheet" href="/static/css/CommonStyle.css">
+    <!-- Remix Icon 开源图标库 -->
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css" rel="stylesheet"/>
 </head>
-
 <body>
 
 <header class="navbar">
-    <h2>添加书籍</h2>
+    <h2><i class="ri-book-2-line"></i> 添加书籍</h2>
     <div class="nav-right">
-        <a href="/page/AdminHomePage" class="btn-link">返回首页</a>
+        <a href="/page/AdminHomePage" class="btn-link"><i class="ri-arrow-left-line"></i> 返回首页</a>
     </div>
 </header>
 
 <div class="container">
-
-    <div class="auth-card" style="width:420px;margin:auto">
-
-        <h2>新增书籍</h2>
+    <div class="auth-card" style="width:420px; margin:auto">
+        <h2><i class="ri-add-circle-line"></i> 新增书籍</h2>
 
         <form id="addBookForm">
-
             <input type="text" id="title" placeholder="书名" required>
-
             <input type="text" id="author" placeholder="作者" required>
-
             <input type="text" id="publisher" placeholder="出版社" required>
-
             <input type="number" id="stock" placeholder="库存" required>
-
             <input type="number" id="price" placeholder="价格(单位分，如3999表示39.99)" required>
-
             <input type="text" id="cover_image" placeholder="封面图片URL">
-
             <input type="text" id="tags" placeholder="标签(用逗号分隔，例如: 小说,历史,文学)">
 
-            <button type="submit">添加书籍</button>
-
+            <button type="submit"><i class="ri-check-line"></i> 添加书籍</button>
         </form>
-
     </div>
-
 </div>
 
 <script src="/static/js/CommonScript.js"></script>
 <script>
-
     document.getElementById("addBookForm").addEventListener("submit", async function(e){
         e.preventDefault()
-// 处理tags
         let tagStr = document.getElementById("tags").value
         let tagArr = []
         if(tagStr.trim() !== ""){
             tagArr = tagStr.split(",").map(t => t.trim())
         }
-// 构建JSON
         const data = {
             title: document.getElementById("title").value,
             author: document.getElementById("author").value,

@@ -4,18 +4,19 @@
     <meta charset="UTF-8">
     <title>注册 - 网络书城</title>
     <link rel="stylesheet" href="/static/css/CommonStyle.css">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css" rel="stylesheet"/>
 </head>
 <body class="auth-body">
-<header class="navbar" style="position:absolute; top:0; left:0; right:0;">
-    <h1>📚 网络书城</h1>
+<header class="navbar" style="position:absolute; top:0; left:0; right:0; background:transparent; backdrop-filter:none; box-shadow:none;">
+    <h1><i class="ri-book-open-line"></i> 网络书城</h1>
     <div class="nav-right">
-        <a href="/page/HomePage">首页</a>
-        <a href="/page/LoginPage" class="btn-link">登录</a>
+        <a href="/page/HomePage"><i class="ri-home-line"></i> 首页</a>
+        <a href="/page/LoginPage" class="btn-link"><i class="ri-login-circle-line"></i> 登录</a>
     </div>
 </header>
 
 <div class="auth-card">
-    <h2>用户注册</h2>
+    <h2><i class="ri-user-add-line"></i> 用户注册</h2>
 
     <form id="registerForm">
         <input type="text" id="username" name="username" placeholder="用户名" required>
@@ -26,14 +27,14 @@
             <span class="gender-label">性别</span>
             <label class="gender-option">
                 <input type="radio" name="gender" value="1" required>
-                男
+                <i class="ri-men-line"></i> 男
             </label>
             <label class="gender-option">
                 <input type="radio" name="gender" value="0">
-                女
+                <i class="ri-women-line"></i> 女
             </label>
         </div>
-        <button type="submit">注册</button>
+        <button type="submit"><i class="ri-checkbox-circle-line"></i> 注册</button>
     </form>
 
     <p class="switch-link">
@@ -43,28 +44,28 @@
 
 <script src="/static/js/CommonScript.js"></script>
 <script>
-document.getElementById("registerForm").addEventListener("submit", function(e) {
-    e.preventDefault();
-    var form = e.target;
-    var fd = new FormData(form);
-    var obj = {};
-    fd.forEach(function(v,k){ obj[k]=v; });
-    obj.gender = parseInt(obj.gender) || 0;
-    apiFetch("/api/register", {
-        method:"POST",
-        body: JSON.stringify(obj)
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.code === CODE_SUCCESS) {
-            alert("注册成功，请登录");
-            window.location.href = "/page/LoginPage";
-        } else {
-            alert(data.msg || "注册失败");
-        }
-    })
-    .catch(() => alert("注册请求失败"));
-});
+    document.getElementById("registerForm").addEventListener("submit", function(e) {
+        e.preventDefault();
+        var form = e.target;
+        var fd = new FormData(form);
+        var obj = {};
+        fd.forEach(function(v,k){ obj[k]=v; });
+        obj.gender = parseInt(obj.gender) || 0;
+        apiFetch("/api/register", {
+            method:"POST",
+            body: JSON.stringify(obj)
+        })
+            .then(res => res.json())
+            .then(data => {
+                if (data.code === 1000) {  // 假设 CODE_SUCCESS = 1000
+                    alert("注册成功，请登录");
+                    window.location.href = "/page/LoginPage";
+                } else {
+                    alert(data.msg || "注册失败");
+                }
+            })
+            .catch(() => alert("注册请求失败"));
+    });
 </script>
 </body>
 </html>

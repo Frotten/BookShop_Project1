@@ -97,3 +97,7 @@ func AdminDeleteBookHandle(c *gin.Context) {
 	}
 	HandleSuccess(c, nil)
 }
+
+func AdminListBookHandle(c *gin.Context) {
+
+}

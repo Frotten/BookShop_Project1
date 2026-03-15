@@ -2,46 +2,40 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>注册 - 网络书城</title>
+    <title>管理员注册 - 网络书城</title>
     <link rel="stylesheet" href="/static/css/CommonStyle.css">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css" rel="stylesheet"/>
 </head>
 <body class="auth-body">
-<header class="navbar" style="position:absolute; top:0; left:0; right:0;">
-    <h1>📚 网络书城</h1>
+<header class="navbar" style="position:absolute; top:0; left:0; right:0; background:transparent; backdrop-filter:none; box-shadow:none;">
+    <h1><i class="ri-book-open-line"></i> 网络书城</h1>
 </header>
 
 <div class="auth-card">
-    <h2>管理员注册</h2>
+    <h2><i class="ri-user-add-line"></i> 管理员注册</h2>
 
     <form id="registerForm" name="registerForm" action="/api/AdminRegister" method="post">
         <input type="text" id="username" name="username" placeholder="用户名" required>
         <input type="password" id="password" name="password" placeholder="密码" required>
         <input type="password" id="confirmPassword" name="re_Password" placeholder="确认密码" required>
-
-        <!-- 错误提示 -->
-        <p id="errorMsg" style="color:red; display:none;">两次输入的密码不一致</p>
-
-        <button type="submit">注册</button>
+        <p id="errorMsg" style="color:#ef4444; display:none;">两次输入的密码不一致</p>
+        <button type="submit"><i class="ri-checkbox-circle-line"></i> 注册</button>
     </form>
 </div>
 
 <script>
     document.getElementById("registerForm").addEventListener("submit", function(e) {
-
         const password = document.getElementById("password").value;
         const confirmPassword = document.getElementById("confirmPassword").value;
         const errorMsg = document.getElementById("errorMsg");
-
         if (password !== confirmPassword) {
-            e.preventDefault(); // 阻止表单提交
+            e.preventDefault();
             errorMsg.style.display = "block";
         } else {
             errorMsg.style.display = "none";
         }
-
     });
 </script>
-
 <script src="/static/js/CommonScript.js"></script>
 </body>
 </html>

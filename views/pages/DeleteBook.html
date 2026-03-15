@@ -4,15 +4,16 @@
     <meta charset="UTF-8">
     <title>删除书籍 - 网络书城</title>
     <link rel="stylesheet" href="/static/css/CommonStyle.css">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css" rel="stylesheet"/>
 </head>
 <body>
 <header class="navbar">
-    <h1>📚 网络书城</h1>
+    <h1><i class="ri-book-open-line"></i> 网络书城</h1>
     <div class="nav-right">
         <div id="auth-area" style="display:none; align-items:center; gap:10px;">
-            <span>管理员</span>
-            <a href="/page/AdminHomePage" class="btn-link">返回首页</a>
-            <button onclick="logout()">退出登录</button>
+            <span><i class="ri-admin-line"></i> 管理员</span>
+            <a href="/page/AdminHomePage" class="btn-link"><i class="ri-arrow-left-line"></i> 返回首页</a>
+            <button onclick="logout()"><i class="ri-logout-box-line"></i> 退出登录</button>
         </div>
         <div id="guest-area" style="display:none;">
             <span>当前不是管理员</span>
@@ -20,23 +21,21 @@
     </div>
 </header>
 <div class="container">
-    <h2>删除书籍</h2>
+    <h2><i class="ri-delete-bin-line"></i> 删除书籍</h2>
     <p>输入书籍ID查询后删除</p>
     <div style="display:flex; gap:30px; margin-top:20px;">
-        <!-- 左侧操作 -->
         <div class="profile-card" style="width:380px;">
-            <h3 style="margin-bottom:16px;">🔎 查询书籍</h3>
+            <h3 style="margin-bottom:16px;"><i class="ri-search-line"></i> 查询书籍</h3>
             <input id="bookID" type="number" placeholder="请输入书籍ID" style="margin-bottom:16px;">
             <button style="width:100%; margin-bottom:12px;" onclick="searchBook()">
-                查询书籍
+                <i class="ri-search-line"></i> 查询书籍
             </button>
             <button style="width:100%; background:#ef4444;" onclick="deleteBook()">
-                删除书籍
+                <i class="ri-delete-bin-line"></i> 删除书籍
             </button>
         </div>
-        <!-- 右侧书籍信息 -->
         <div class="profile-card" style="flex:1;" id="bookInfo">
-            <h3>📖 书籍信息</h3>
+            <h3><i class="ri-information-line"></i> 书籍信息</h3>
             <p style="color:#888;">请先查询书籍</p>
         </div>
     </div>
@@ -66,15 +65,10 @@
         }
     }
     function renderBook(book) {
-
         const panel = document.getElementById("bookInfo");
-
         panel.innerHTML = `
-<h3>📖 书籍信息</h3>
-
+<h3><i class="ri-information-line"></i> 书籍信息</h3>
 <div style="display:flex; gap:20px; align-items:flex-start; margin-top:10px;">
-
-    <!-- 封面 -->
     <div style="flex-shrink:0;">
         <img
             src="${book.cover_image}"
@@ -88,19 +82,16 @@
             "
         >
     </div>
-
-    <!-- 书籍信息 -->
     <div style="flex:1;">
-        <p><b>ID：</b>${book.book_id}</p>
-        <p><b>书名：</b>${book.title}</p>
-        <p><b>作者：</b>${book.author}</p>
-        <p><b>出版：</b>${book.publisher}</p>
-        <p><b>价格：</b>￥${(book.price / 100).toFixed(2)}</p>
-        <p><b>库存：</b>${book.stock}</p>
-        <p><b>评分：</b>${(book.score / 100).toFixed(2)}</p>
-        <p><b>标签：</b>${book.tags}</p>
+        <p><b><i class="ri-hashtag"></i> ID：</b>${book.book_id}</p>
+        <p><b><i class="ri-book-line"></i> 书名：</b>${book.title}</p>
+        <p><b><i class="ri-pencil-line"></i> 作者：</b>${book.author}</p>
+        <p><b><i class="ri-building-line"></i> 出版：</b>${book.publisher}</p>
+        <p><b><i class="ri-money-cny-circle-line"></i> 价格：</b>￥${(book.price / 100).toFixed(2)}</p>
+        <p><b><i class="ri-stock-line"></i> 库存：</b>${book.stock}</p>
+        <p><b><i class="ri-star-line"></i> 评分：</b>${(book.score / 100).toFixed(2)}</p>
+        <p><b><i class="ri-price-tag-3-line"></i> 标签：</b>${book.tags}</p>
     </div>
-
 </div>
 `;
     }
@@ -132,7 +123,15 @@
     }
     document.addEventListener("DOMContentLoaded", async function () {
         const loggedIn = await checkAuth();
-        updateNavbar(loggedIn);
+        const authArea = document.getElementById("auth-area");
+        const guestArea = document.getElementById("guest-area");
+        if (loggedIn) {
+            authArea.style.display = "flex";
+            guestArea.style.display = "none";
+        } else {
+            authArea.style.display = "none";
+            guestArea.style.display = "block";
+        }
     });
 </script>
 </body>

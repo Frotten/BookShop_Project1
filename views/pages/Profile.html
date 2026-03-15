@@ -4,36 +4,37 @@
     <meta charset="UTF-8">
     <title>个人中心 - 网络书城</title>
     <link rel="stylesheet" href="/static/css/CommonStyle.css">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css" rel="stylesheet"/>
 </head>
 <body>
 
 <header class="navbar">
-    <h1>📚 网络书城</h1>
+    <h1><i class="ri-book-open-line"></i> 网络书城</h1>
     <div class="nav-right">
-        <a href="/page/HomePage">首页</a>
+        <a href="/page/HomePage"><i class="ri-home-line"></i> 首页</a>
         <div id="auth-area" style="display:none; align-items:center; gap:12px;">
-            <button onclick="logout()">退出</button>
+            <button onclick="logout()"><i class="ri-logout-box-line"></i> 退出</button>
         </div>
         <div id="guest-area" style="display:flex; align-items:center; gap:12px;">
-            <a href="/page/LoginPage" class="btn-link">登录</a>
-            <a href="/page/RegisterPage" class="btn-link">注册</a>
+            <a href="/page/LoginPage" class="btn-link"><i class="ri-login-circle-line"></i> 登录</a>
+            <a href="/page/RegisterPage" class="btn-link"><i class="ri-user-add-line"></i> 注册</a>
         </div>
     </div>
 </header>
 
 <div class="container">
-    <h2>个人中心</h2>
+    <h2><i class="ri-user-settings-line"></i> 个人中心</h2>
 
     <div class="profile-card">
-        <p><strong>用户名：</strong>{{ .username }}</p>
+        <p><strong><i class="ri-user-line"></i> 用户名：</strong> {{ .username }}</p>
     </div>
 
     <div class="profile-card">
-        <h3>我的订单</h3>
+        <h3><i class="ri-shopping-bag-line"></i> 我的订单</h3>
         {{ if .orders }}
         <ul>
             {{ range .orders }}
-            <li>订单号：{{ .ID }} - 金额：￥{{ .Amount }}</li>
+            <li><i class="ri-file-list-line"></i> 订单号：{{ .ID }} - 金额：￥{{ .Amount }}</li>
             {{ end }}
         </ul>
         {{ else }}
@@ -44,11 +45,19 @@
 
 <script src="/static/js/CommonScript.js"></script>
 <script>
-document.addEventListener("DOMContentLoaded", function() {
-    checkAuth().then(function(loggedIn) {
-        updateNavbar(loggedIn);
+    document.addEventListener("DOMContentLoaded", function() {
+        checkAuth().then(function(loggedIn) {
+            const authArea = document.getElementById("auth-area");
+            const guestArea = document.getElementById("guest-area");
+            if (loggedIn) {
+                authArea.style.display = "flex";
+                guestArea.style.display = "none";
+            } else {
+                authArea.style.display = "none";
+                guestArea.style.display = "flex";
+            }
+        });
     });
-});
 </script>
 </body>
 </html>

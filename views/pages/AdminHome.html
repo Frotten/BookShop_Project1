@@ -4,100 +4,89 @@
     <meta charset="UTF-8">
     <title>管理员首页 - 网络书城</title>
     <link rel="stylesheet" href="/static/css/CommonStyle.css">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css" rel="stylesheet"/>
 </head>
-
 <body>
 
 <header class="navbar">
-    <h1>📚 网络书城</h1>
-
+    <h1><i class="ri-book-open-line"></i> 网络书城</h1>
     <div class="nav-right">
-
-        <!-- 管理员导航 -->
         <div id="auth-area" style="display:none; align-items:center; gap:10px;">
-            <span>管理员</span>
-            <button onclick="logout()">退出登录</button>
+            <span><i class="ri-admin-line"></i> 管理员</span>
+            <button onclick="logout()"><i class="ri-logout-box-line"></i> 退出登录</button>
         </div>
-
-        <!-- 游客导航 -->
         <div id="guest-area" style="display:none;">
             <span>当前不是管理员，请退出后台</span>
         </div>
-
     </div>
 </header>
 
-
-<!-- ================= 管理员界面 ================= -->
-
 <div id="admin-panel">
-
     <div class="container">
         <h2>欢迎来到网络书城管理员界面！</h2>
         <p>在这里，您可以管理图书、订单和用户等信息。</p>
     </div>
 
     <div class="grid">
-
-        <!-- 图书管理 -->
         <div class="book-card">
-            <h3>📚 图书管理</h3>
+            <h3><i class="ri-book-2-line"></i> 图书管理</h3>
             <p>添加、修改或删除书籍信息。</p>
             <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
-                <button onclick="location.href='/page/AddBookPage'">添加书籍</button>
-                <button onclick="location.href='/admin/book/list'">管理书籍</button>
-                <button onclick="location.href='/page/DeleteBookPage'">删除书籍</button>
+                <button onclick="location.href='/page/AddBookPage'"><i class="ri-add-line"></i> 添加书籍</button>
+                <button onclick="location.href='/admin/book/list'"><i class="ri-list-check"></i> 管理书籍</button>
+                <button onclick="location.href='/page/DeleteBookPage'"><i class="ri-delete-bin-line"></i> 删除书籍</button>
             </div>
         </div>
 
-        <!-- 订单管理 -->
         <div class="book-card">
-            <h3>📦 订单管理</h3>
+            <h3><i class="ri-shopping-bag-line"></i> 订单管理</h3>
             <p>查看并处理用户订单。</p>
             <div style="margin-top:12px; display:flex; gap:10px;">
-                <button onclick="location.href='/admin/order/list'">查看订单</button>
-                <button onclick="location.href='/admin/order/manage'">订单处理</button>
+                <button onclick="location.href='/admin/order/list'"><i class="ri-file-list-line"></i> 查看订单</button>
+                <button onclick="location.href='/admin/order/manage'"><i class="ri-settings-line"></i> 订单处理</button>
             </div>
         </div>
 
-        <!-- 用户管理 -->
         <div class="book-card">
-            <h3>👤 用户管理</h3>
+            <h3><i class="ri-user-settings-line"></i> 用户管理</h3>
             <p>查看、管理或封禁用户。</p>
             <div style="margin-top:12px; display:flex; gap:10px;">
-                <button onclick="location.href='/admin/user/list'">用户列表</button>
-                <button onclick="location.href='/admin/user/manage'">用户管理</button>
+                <button onclick="location.href='/admin/user/list'"><i class="ri-group-line"></i> 用户列表</button>
+                <button onclick="location.href='/admin/user/manage'"><i class="ri-user-star-line"></i> 用户管理</button>
             </div>
         </div>
 
-        <!-- 数据统计 -->
         <div class="book-card">
-            <h3>📊 数据统计</h3>
+            <h3><i class="ri-bar-chart-line"></i> 数据统计</h3>
             <p>查看商城运营数据。</p>
             <div style="margin-top:12px;">
-                <button onclick="location.href='/admin/status'">查看统计</button>
+                <button onclick="location.href='/admin/status'"><i class="ri-pie-chart-line"></i> 查看统计</button>
             </div>
         </div>
     </div>
 </div>
-<!-- ================= 游客界面 ================= -->
+
 <div id="guest-panel" style="display:none; padding:40px; text-align:center;">
     <h2>当前未登录管理员</h2>
     <p>请退出后台页面</p>
 </div>
+
 <script src="/static/js/CommonScript.js"></script>
 <script>
     document.addEventListener("DOMContentLoaded", async function () {
         const loggedIn = await checkAuth();
-        updateNavbar(loggedIn);
-        const adminPanel = document.getElementById("admin-panel");
-        const guestPanel = document.getElementById("guest-panel");
+        const authArea = document.getElementById("auth-area");
+        const guestArea = document.getElementById("guest-area");
         if (loggedIn) {
-            adminPanel.style.display = "block";
-            guestPanel.style.display = "none";
+            authArea.style.display = "flex";
+            guestArea.style.display = "none";
+            document.getElementById("admin-panel").style.display = "block";
+            document.getElementById("guest-panel").style.display = "none";
         } else {
-            adminPanel.style.display = "none";
-            guestPanel.style.display = "block";
+            authArea.style.display = "none";
+            guestArea.style.display = "block";
+            document.getElementById("admin-panel").style.display = "none";
+            document.getElementById("guest-panel").style.display = "block";
         }
     });
 </script>
