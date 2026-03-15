@@ -60,17 +60,17 @@ func AdminAddBookHandle(c *gin.Context) {
 	HandleSuccess(c, nil)
 }
 
-func DeleteBookParamHandle(c *gin.Context) {
+func GetBookParamHandle(c *gin.Context) {
 	IDString := c.Param("book_id")
 	ID, err := strconv.ParseInt(IDString, 10, 64)
 	if err != nil {
-		zap.L().Error("DeleteBookParamHandle failed", zap.Error(err))
+		zap.L().Error("GetBookParamHandle failed", zap.Error(err))
 		HandleResponse(c, models.CodeInvalidParam)
 		return
 	}
 	Book, err := logic.GetBookByID(ID)
 	if err != nil {
-		zap.L().Error("DeleteBookParamHandle failed", zap.Error(err))
+		zap.L().Error("GetBookParamHandle failed", zap.Error(err))
 		if errors.Is(err, sql.ErrNoRows) {
 			HandleResponse(c, models.CodeBookNotExist)
 			return

@@ -50,7 +50,7 @@
             return;
         }
         try {
-            const res = await apiFetch("/admin/book/delete/" + id,{
+            const res = await apiFetch("/admin/book/getbook/" + id,{
                 method: "GET"
             })
             const result = await res.json();

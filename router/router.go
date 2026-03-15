@@ -56,7 +56,7 @@ func SetUp() *gin.Engine {
 		book := v3.Group("/book") //管理员对书籍的增删改查
 		{
 			book.POST("/add", controllers.AdminAddBookHandle)
-			book.GET("/delete/:book_id", controllers.DeleteBookParamHandle)
+			book.GET("/getbook/:book_id", controllers.GetBookParamHandle)
 			book.DELETE("/delete/:book_id", controllers.AdminDeleteBookHandle)
 			//book.GET("/list", controllers.AdminListBookHandle)
 		}
