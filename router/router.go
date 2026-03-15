@@ -47,6 +47,7 @@ func SetUp() *gin.Engine {
 			Admin.GET("/AdminHomePage", controllers.AdminHomePageHandle)
 			Admin.GET("/AddBookPage", controllers.AddBookPageHandle)
 			Admin.GET("/DeleteBookPage", controllers.DeleteBookPageHandle)
+			Admin.GET("/UpdateBookPage", controllers.UpdateBookPageHandle)
 		}
 	}
 	v3 := r.Group("/admin")
@@ -58,7 +59,7 @@ func SetUp() *gin.Engine {
 			book.POST("/add", controllers.AdminAddBookHandle)
 			book.GET("/getbook/:book_id", controllers.GetBookParamHandle)
 			book.DELETE("/delete/:book_id", controllers.AdminDeleteBookHandle)
-			//book.GET("/list", controllers.AdminListBookHandle)
+			book.POST("/update", controllers.AdminUpdateBookHandle)
 		}
 		//user := v3.Group("/user")
 		//{

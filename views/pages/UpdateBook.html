@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>更新书籍 - 网络书城</title>
+    <link rel="stylesheet" href="/static/css/CommonStyle.css">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css" rel="stylesheet"/>
+</head>
+<body>
+<header class="navbar">
+    <h1><i class="ri-book-open-line"></i> 网络书城</h1>
+    <div class="nav-right">
+        <div id="auth-area" style="display:none; align-items:center; gap:10px;">
+            <span><i class="ri-admin-line"></i> 管理员</span>
+            <a href="/page/AdminHomePage" class="btn-link">
+                <i class="ri-arrow-left-line"></i> 返回首页
+            </a>
+            <button onclick="logout()">
+                <i class="ri-logout-box-line"></i> 退出登录
+            </button>
+        </div>
+        <div id="guest-area" style="display:none;">
+            <span>当前不是管理员</span>
+        </div>
+    </div>
+</header>
+<div class="container">
+    <h2><i class="ri-edit-line"></i> 更新书籍</h2>
+    <p>输入书籍ID查询并修改书籍信息</p>
+    <div style="display:flex; gap:30px; margin-top:20px;">
+        <!-- 左侧查询 -->
+        <div class="profile-card" style="width:380px;">
+
+            <h3 style="margin-bottom:16px;">
+                <i class="ri-search-line"></i> 查询书籍
+            </h3>
+            <input id="bookID" type="number" placeholder="请输入书籍ID" style="margin-bottom:16px;">
+            <button style="width:100%;" onclick="searchBook()">
+                <i class="ri-search-line"></i> 查询书籍
+            </button>
+        </div>
+        <!-- 右侧编辑 -->
+        <div class="profile-card" style="flex:1;" id="bookInfo">
+            <h3><i class="ri-information-line"></i> 书籍信息</h3>
+            <p style="color:#888;">请先查询书籍</p>
+        </div>
+    </div>
+</div>
+<script src="/static/js/CommonScript.js"></script>
+<script>
+    let currentBook = null;
+    async function searchBook(){
+        const id = document.getElementById("bookID").value.trim()
+        if(!id){
+            alert("请输入书籍ID")
+            return
+        }
+        try{
+            const res = await apiFetch("/admin/book/getbook/"+id,{
+                method:"GET"
+            })
+            const result = await res.json()
+            if(result.code !== 1000){
+                alert("查询失败："+result.msg)
+                return
+            }
+            currentBook = result.data
+            renderBook(currentBook)
+        }catch(err){
+            alert("请求失败")
+        }
+    }
+    function renderBook(book){
+        const panel = document.getElementById("bookInfo")
+        panel.innerHTML = `
+
+<h3><i class="ri-edit-line"></i> 编辑书籍</h3>
+
+<div style="display:flex; gap:30px; margin-top:15px;">
+
+    <!-- 封面 -->
+    <div style="width:200px; text-align:center;">
+
+        <img id="coverPreview"
+            src="${book.cover_image}"
+            style="
+                width:160px;
+                height:220px;
+                object-fit:cover;
+                border-radius:8px;
+                box-shadow:0 2px 8px rgba(0,0,0,0.2);
+            "
+        >
+
+        <input
+            id="cover_image"
+            value="${book.cover_image}"
+            placeholder="封面图片URL"
+            style="margin-top:10px;"
+            oninput="updatePreview()"
+        >
+
+    </div>
+
+
+    <!-- 编辑表单 -->
+<div style="flex:1; display:flex; flex-direction:column; gap:14px;">
+
+    <div class="form-item">
+        <label>书名：</label>
+        <input id="title" value="${book.title}" placeholder="请输入书名">
+    </div>
+
+    <div class="form-item">
+        <label>作者：</label>
+        <input id="author" value="${book.author}" placeholder="请输入作者">
+    </div>
+
+    <div class="form-item">
+        <label>出版社：</label>
+        <input id="publisher" value="${book.publisher}" placeholder="请输入出版社">
+    </div>
+
+    <div class="form-item">
+        <label>价格：</label>
+        <input id="price" type="number" value="${book.price/100}" placeholder="请输入价格">
+    </div>
+
+    <div class="form-item">
+        <label>库存：</label>
+        <input id="stock" type="number" value="${book.stock}" placeholder="请输入库存">
+    </div>
+
+    <div class="form-item">
+        <label>评分：</label>
+        <input id="score" type="number" value="${book.score/100}" placeholder="请输入评分">
+    </div>
+
+    <div class="form-item">
+        <label>标签：</label>
+        <input id="tags" value="${book.tags}" placeholder="例如：小说,文学">
+    </div>
+
+    <button
+        style="margin-top:10px; background:#22c55e;"
+        onclick="updateBook()"
+    >
+        <i class="ri-save-line"></i> 确认更新
+    </button>
+
+</div>
+
+</div>
+`
+    }
+    function updatePreview(){
+        const url = document.getElementById("cover_image").value
+        document.getElementById("coverPreview").src = url
+    }
+    async function updateBook(){
+        if(!currentBook){
+            alert("请先查询书籍")
+            return
+        }
+        const data = {
+            book_id: currentBook.book_id,
+            title: document.getElementById("title").value,
+            author: document.getElementById("author").value,
+            publisher: document.getElementById("publisher").value,
+            price: Math.round(document.getElementById("price").value * 100),
+            stock: parseInt(document.getElementById("stock").value),
+            score: Math.round(document.getElementById("score").value * 100),
+            tags: document.getElementById("tags").value,
+            cover_image: document.getElementById("cover_image").value
+        }
+        try{
+            const res = await apiFetch("/admin/book/update",{
+                method:"POST",
+                body: JSON.stringify(data)
+            })
+            const result = await res.json()
+            if(result.code === 1000){
+                alert("更新成功")
+                location.href="/page/AdminHomePage"
+            }else{
+                alert("更新失败："+result.msg)
+            }
+        }catch(err){
+            alert("请求失败")
+        }
+    }
+    document.addEventListener("DOMContentLoaded", async function () {
+        const loggedIn = await checkAuth()
+        const authArea = document.getElementById("auth-area")
+        const guestArea = document.getElementById("guest-area")
+        if (loggedIn) {
+            authArea.style.display = "flex"
+            guestArea.style.display = "none"
+        } else {
+            authArea.style.display = "none"
+            guestArea.style.display = "block"
+        }
+    })
+</script>
+</body>
+</html>

@@ -30,7 +30,7 @@
             <h3>{{ .Title }}</h3>
             <p><i class="ri-pencil-line"></i> 作者：{{ .Author }}</p>
             <p class="price"><i class="ri-money-cny-circle-line"></i> ￥{{ .Price }}</p>
-            <button onclick="addToCart({{ .ID }})"><i class="ri-shopping-cart-line"></i> 加入购物车</button>
+            <button onclick="addToCart({{ .BookID }})"><i class="ri-shopping-cart-line"></i> 加入购物车</button>
         </div>
         {{ else }}
         <p>暂无图书</p>

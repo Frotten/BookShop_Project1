@@ -98,6 +98,23 @@ func AdminDeleteBookHandle(c *gin.Context) {
 	HandleSuccess(c, nil)
 }
 
-func AdminListBookHandle(c *gin.Context) {
-
+func AdminUpdateBookHandle(c *gin.Context) {
+	var B models.Book
+	if err := c.ShouldBindJSON(&B); err != nil {
+		zap.L().Error("AdminUpdateBookHandle failed", zap.Error(err))
+		HandleResponse(c, models.CodeInvalidParam)
+		return
+	}
+	exist := mysql.ExistBook(B.BookID)
+	if !exist {
+		HandleResponse(c, models.CodeBookNotExist)
+		return
+	}
+	err := mysql.UpdateBook(&B)
+	if err != nil {
+		zap.L().Error("AdminUpdateBookHandle failed", zap.Error(err))
+		HandleResponse(c, models.CodeServerBusy)
+		return
+	}
+	HandleSuccess(c, nil)
 }
