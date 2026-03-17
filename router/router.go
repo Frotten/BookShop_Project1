@@ -25,6 +25,7 @@ func SetUp() *gin.Engine {
 		v1.POST("/login", controllers.LoginHandler)
 		v1.POST("/AdminRegister", controllers.AdminRegisterHandler)
 		v1.POST("/AdminLogin", controllers.AdminLoginHandler)
+		v1.GET("/getBooksJSON", controllers.GetBooksJSON)
 		//Login := v1.Use(middlewares.JWTAuthMiddleware())
 		//{
 		//
@@ -32,7 +33,7 @@ func SetUp() *gin.Engine {
 	}
 	v2 := r.Group("/page")
 	{
-		v2.GET("/HomePage", controllers.SBHbasic)
+		v2.GET("/HomePage", controllers.HomePageHandle)
 		v2.GET("/HomePage/:page", controllers.ScoreBookHandle)
 		v2.GET("/LoginPage", controllers.LoginPageHandle)
 		v2.GET("/RegisterPage", controllers.RegisterPageHandle)

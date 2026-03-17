@@ -17,6 +17,7 @@ func ScoreBookHandle(c *gin.Context) {
 	Page, err := strconv.ParseInt(PageString, 10, 64)
 	if err != nil {
 		HandleResponse(c, models.CodeInvalidParam)
+		return
 	}
 	Books, total, err := mysql.GetBooksPageByScore(Page)
 	Pages := &models.Page{
@@ -26,22 +27,24 @@ func ScoreBookHandle(c *gin.Context) {
 	}
 	if err != nil {
 		HandleResponse(c, models.CodeServerBusy)
+		return
 	}
-	HomePageHandleWithInfo(c, Pages)
+	HandleSuccess(c, Pages)
 }
 
-func SBHbasic(c *gin.Context) {
+func GetBooksJSON(c *gin.Context) {
 	Page := int64(1)
 	Books, total, err := mysql.GetBooksPageByScore(Page)
+	if err != nil {
+		HandleResponse(c, models.CodeServerBusy)
+		return
+	}
 	Pages := &models.Page{
 		Page:  Page,
 		Total: total,
 		Data:  Books,
 	}
-	if err != nil {
-		HandleResponse(c, models.CodeServerBusy)
-	}
-	HomePageHandleWithInfo(c, Pages)
+	HandleSuccess(c, Pages)
 }
 
 func AdminAddBookHandle(c *gin.Context) {
