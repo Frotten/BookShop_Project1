@@ -1,0 +1,237 @@
+/* 详情页专用布局与微调 */
+.detail-wrapper {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2rem;
+    margin: 2rem 0;
+}
+
+.detail-cover {
+    flex: 0 0 280px;
+    max-width: 280px;
+    background: rgba(255,255,255,0.6);
+    backdrop-filter: blur(2px);
+    border-radius: var(--radius);
+    padding: 1rem;
+    box-shadow: var(--shadow);
+    border: 1px solid rgba(255,255,255,0.5);
+    align-self: flex-start;
+}
+
+.detail-cover img {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 2 / 3;
+    object-fit: cover;
+    border-radius: calc(var(--radius) - 4px);
+    box-shadow: var(--shadow-sm);
+    background: var(--gray-200);
+    display: block;
+}
+
+.detail-info {
+    flex: 1;
+    min-width: 300px;
+    background: rgba(255,255,255,0.8);
+    backdrop-filter: blur(4px);
+    padding: 1.8rem 2rem;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    border: 1px solid rgba(255,255,255,0.7);
+}
+
+.detail-info h2 {
+    font-size: 2rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: var(--gray-800);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    border-bottom: 2px solid var(--primary-light);
+    padding-bottom: 0.5rem;
+}
+
+.meta-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem 1.5rem;
+    margin: 1.5rem 0;
+}
+
+.meta-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--gray-600);
+    font-size: 1rem;
+}
+
+.meta-item i {
+    color: var(--primary);
+    font-size: 1.3rem;
+    width: 1.8rem;
+}
+
+.meta-item strong {
+    color: var(--gray-800);
+    font-weight: 600;
+    margin-right: 0.25rem;
+}
+
+.tag-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 1.5rem 0 1rem;
+}
+
+.tag {
+    background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary) 100%);
+    color: white;
+    padding: 0.3rem 1rem;
+    border-radius: 30px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    box-shadow: var(--shadow-sm);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.tag i {
+    font-size: 1rem;
+}
+
+.price-large {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--primary-dark);
+    display: flex;
+    align-items: baseline;
+    gap: 0.2rem;
+    margin: 0.5rem 0 1rem;
+}
+
+.price-large small {
+    font-size: 1rem;
+    font-weight: 400;
+    color: var(--gray-600);
+    margin-left: 0.5rem;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin: 2rem 0 1rem;
+}
+
+.action-buttons button {
+    flex: 1 1 auto;
+    min-width: 160px;
+}
+
+/* 评分区域 */
+.rating-section {
+    margin-top: 2.5rem;
+    padding-top: 2rem;
+    border-top: 2px dashed var(--gray-200);
+}
+
+.rating-title {
+    font-size: 1.3rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    color: var(--gray-800);
+}
+
+.stars-readonly {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    margin-left: 1rem;
+    color: #fbbf24; /* 琥珀色 */
+}
+
+.stars-input {
+    display: flex;
+    flex-direction: row-reverse;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin: 1rem 0 1.5rem;
+}
+
+.stars-input i {
+    font-size: 2.2rem;
+    color: #d1d5db;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.stars-input i:hover,
+.stars-input i:hover ~ i {
+    color: #fbbf24;
+}
+
+.stars-input i.selected {
+    color: #fbbf24;
+}
+
+.rating-feedback {
+    width: 100%;
+}
+
+.rating-feedback textarea {
+    width: 100%;
+    padding: 1rem;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-sm);
+    font-family: inherit;
+    font-size: 1rem;
+    resize: vertical;
+    min-height: 100px;
+    margin: 1rem 0;
+    background: white;
+    transition: border 0.2s, box-shadow 0.2s;
+}
+
+.rating-feedback textarea:focus {
+    outline: none;
+    border-color: var(--primary-light);
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}
+
+.submit-rating {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.submit-rating button {
+    padding: 0.8rem 2.5rem;
+}
+
+.no-book {
+    text-align: center;
+    padding: 4rem;
+    background: rgba(255,255,255,0.7);
+    border-radius: var(--radius);
+    font-size: 1.2rem;
+    color: var(--gray-600);
+}
+
+@media (max-width: 700px) {
+    .detail-wrapper {
+        flex-direction: column;
+    }
+    .detail-cover {
+        max-width: 100%;
+        flex: auto;
+    }
+    .meta-grid {
+        grid-template-columns: 1fr;
+    }
+}

@@ -121,3 +121,26 @@ func AdminUpdateBookHandle(c *gin.Context) {
 	}
 	HandleSuccess(c, nil)
 }
+
+func RateBookHandle(c *gin.Context) {
+	var R models.UserRateBook
+	UserID, ok := c.Get("userID")
+	if !ok || UserID == nil {
+		zap.L().Error("RateBookHandle failed: UserID not found in context")
+		HandleResponse(c, models.CodeServerBusy)
+		return
+	}
+	if err := c.ShouldBindJSON(&R); err != nil {
+		zap.L().Error("RateBookHandle failed", zap.Error(err))
+		HandleResponse(c, models.CodeInvalidParam)
+		return
+	}
+	R.UserID = UserID.(int64)
+	res := logic.RateBook(&R)
+	if res != models.CodeSuccess {
+		zap.L().Error("RateBookHandle failed")
+		HandleResponse(c, res)
+		return
+	}
+	HandleSuccess(c, nil)
+}

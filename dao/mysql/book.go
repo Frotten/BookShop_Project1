@@ -1,8 +1,10 @@
 package mysql
 
-import "Project1_Shop/models"
+import (
+	"Project1_Shop/models"
+)
 
-const PageSize = 10
+const PageSize = 8
 
 func GetBooksPageByScore(page int64) ([]*models.Book, int64, error) {
 	var Books []*models.Book
@@ -52,5 +54,40 @@ func DeleteBook(ID int64) error {
 
 func UpdateBook(book *models.Book) error {
 	result := DB.Save(book)
+	return result.Error
+}
+
+func GetRateBookByID(ID int64) (*models.RateBook, error) {
+	var rateBook models.RateBook
+	result := DB.Where("book_id = ?", ID).First(&rateBook)
+	if result.RowsAffected == 0 {
+		DB.Create(&models.RateBook{
+			BookID:     ID,
+			ScoreCount: 0,
+			Score:      0,
+			Sale:       0,
+		})
+		result = DB.Where("book_id = ?", ID).First(&rateBook)
+		if result.RowsAffected == 0 {
+			return nil, result.Error
+		}
+		return &rateBook, result.Error
+	}
+	return &rateBook, result.Error
+}
+
+func UpdateRateBook(rateBook *models.RateBook) error {
+	result := DB.Save(rateBook)
+	return result.Error
+}
+
+func GetBeforeBookScore(p *models.UserRateBook) (int64, error) {
+	var Temp models.UserRateBook
+	result := DB.Where("book_id = ? AND user_id = ?", p.BookID, p.UserID).First(&Temp)
+	return Temp.Score, result.Error
+}
+
+func UpdateUserRate(p *models.UserRateBook) error {
+	result := DB.Save(p)
 	return result.Error
 }

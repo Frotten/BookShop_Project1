@@ -49,3 +49,7 @@ func DeleteBookPageHandle(c *gin.Context) {
 func UpdateBookPageHandle(c *gin.Context) {
 	c.HTML(http.StatusOK, "UpdateBook.html", nil)
 }
+
+func BookDetailPageHandle(c *gin.Context) {
+	c.HTML(http.StatusOK, "BookDetail.html", nil)
+}

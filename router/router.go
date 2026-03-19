@@ -26,19 +26,21 @@ func SetUp() *gin.Engine {
 		v1.POST("/AdminRegister", controllers.AdminRegisterHandler)
 		v1.POST("/AdminLogin", controllers.AdminLoginHandler)
 		v1.GET("/getBooksJSON", controllers.GetBooksJSON)
-		//Login := v1.Use(middlewares.JWTAuthMiddleware())
-		//{
-		//
-		//}
+		v1.GET("/getBooksJSON/:page", controllers.ScoreBookHandle)
+		v1.GET("/getBookDetail/:book_id", controllers.GetBookParamHandle)
+		Login := v1.Use(middlewares.JWTAuthMiddleware())
+		{
+			Login.POST("/rateBook", controllers.RateBookHandle)
+		}
 	}
 	v2 := r.Group("/page")
 	{
 		v2.GET("/HomePage", controllers.HomePageHandle)
-		v2.GET("/HomePage/:page", controllers.ScoreBookHandle)
 		v2.GET("/LoginPage", controllers.LoginPageHandle)
 		v2.GET("/RegisterPage", controllers.RegisterPageHandle)
 		v2.GET("/AdminLoginPage", controllers.AdminLoginPageHandle)
 		v2.GET("/AdminRegisterPage", controllers.AdminRegisterPageHandle)
+		v2.GET("/BooksPage", controllers.BookDetailPageHandle)
 		User := v2.Use(middlewares.CookieAuthMiddleware())
 		{
 			User.GET("/ProfilePage", controllers.ProfilePageHandle)

@@ -9,7 +9,11 @@
 <body>
 
 <header class="navbar">
-    <h1><i class="ri-book-open-line"></i> 网络书城</h1>
+    <h1>
+        <a href="/page/HomePage" style="color: inherit; text-decoration: none;">
+            <i class="ri-book-open-line"></i> 网络书城
+        </a>
+    </h1>
     <div class="nav-right">
         <div id="auth-area" style="display:none; align-items:center; gap:12px;">
             <a href="/page/ProfilePage"><i class="ri-user-line"></i> 个人中心</a>
@@ -70,25 +74,33 @@
         }
         let html = '';
         books.forEach(book => {
-            // 假设 book.price 单位为分，转换为元并保留两位小数
             const priceYuan = (book.price / 100).toFixed(2);
             const score = (book.score / 100).toFixed(2);
             html += `
-                <div class="book-card">
-                    <h3>${escapeHtml(book.title)}</h3>
-                    <p><i class="ri-pencil-line"></i> 作者：${escapeHtml(book.author)}</p>
-                    <p class="score"><i class="ri-star-smile-line"></i> 评分：${score}</p>
-                    <p class="price"><i class="ri-money-cny-circle-line"></i> ￥${priceYuan}</p>
-                    <button data-id="${book.book_id}"><i class="ri-shopping-cart-line"></i> 加入购物车</button>
-                </div>
-            `;
+            <div class="book-card" data-book-id="${book.book_id}">
+                <h3>${escapeHtml(book.title)}</h3>
+                <p><i class="ri-pencil-line"></i> 作者：${escapeHtml(book.author)}</p>
+                <p class="score"><i class="ri-star-smile-line"></i> 评分：${score}</p>
+                <p class="price"><i class="ri-money-cny-circle-line"></i> ￥${priceYuan}</p>
+                <button data-id="${book.book_id}"><i class="ri-shopping-cart-line"></i> 加入购物车</button>
+            </div>
+        `;
         });
         grid.innerHTML = html;
-        // 为所有加入购物车按钮（通过事件委托）绑定点击处理
+
         grid.addEventListener('click', function(e) {
+            // 1. 先处理按钮点击（加入购物车）
             const button = e.target.closest('button');
             if (button && button.dataset.id) {
                 addToCart(button.dataset.id);
+                return; // 阻止后续跳转
+            }
+
+            // 2. 处理卡片其余区域点击（跳转详情页）
+            const card = e.target.closest('.book-card');
+            if (card && card.dataset.bookId) {
+                const bookId = card.dataset.bookId;
+                window.location.href = `/page/BooksPage?book_id=${bookId}`;
             }
         });
     }
