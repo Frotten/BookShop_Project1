@@ -79,6 +79,38 @@ func RateNewBook(p *models.UserRateBook) models.ResCode {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func(p *models.UserRateBook) {
+		RB, err := mysql.GetRateBookByID(p.BookID)
+		if err != nil {
+			errCh <- err
+			wg.Done()
+			return
+		}
+		RB.ScoreCount++
+		RB.Score += p.Score
+		//更新MySQL数据库中的评分信息
+		err = mysql.UpdateRateBook(RB)
+		if err != nil {
+			errCh <- err
+			wg.Done()
+			return
+		}
+		err = mysql.UpdateUserRate(p)
+		if err != nil {
+			errCh <- err
+			wg.Done()
+			return
+		}
+		err = mysql.UpdateBookScore(RB)
+		if err != nil {
+			errCh <- err
+			wg.Done()
+			return
+		}
+		errCh <- nil
+		wg.Done()
+	}(p)
+	wg.Add(1)
+	go func(p *models.UserRateBook) {
 		err := redis.CacheBookScoreCount(p.BookID, 1)
 		if err != nil {
 			errCh <- err
@@ -97,27 +129,13 @@ func RateNewBook(p *models.UserRateBook) models.ResCode {
 			wg.Done()
 			return
 		}
-		errCh <- nil
-		wg.Done()
-	}(p)
-	wg.Add(1)
-	go func(p *models.UserRateBook) {
-		RB, err := mysql.GetRateBookByID(p.BookID) //Wrong
+		AllScore, Count, err := redis.GetAllScoreAndCount(p.BookID)
 		if err != nil {
 			errCh <- err
 			wg.Done()
 			return
 		}
-		RB.ScoreCount++
-		RB.Score += p.Score
-		//更新MySQL数据库中的评分信息
-		err = mysql.UpdateRateBook(RB)
-		if err != nil {
-			errCh <- err
-			wg.Done()
-			return
-		}
-		err = mysql.UpdateUserRate(p)
+		err = redis.AddScoreRank(p.BookID, AllScore, Count)
 		if err != nil {
 			errCh <- err
 			wg.Done()
@@ -139,35 +157,6 @@ func RateNewBook(p *models.UserRateBook) models.ResCode {
 func RateUpdateBook(p *models.UserRateBook) models.ResCode {
 	errCh := make(chan error, 2)
 	var wg sync.WaitGroup
-	wg.Add(1)
-	go func(p *models.UserRateBook) {
-		err := redis.CacheBookScoreCount(p.BookID, 0) //评分更新不改变评分数量
-		if err != nil {
-			errCh <- err
-			wg.Done()
-			return
-		}
-		BeforeScore, err := redis.GetBeforeBookScore(p.UserID, p.BookID)
-		if err != nil {
-			errCh <- err
-			wg.Done()
-			return
-		}
-		err = redis.CacheBookScoreSum(p.BookID, p.Score-BeforeScore) //评分更新需要先获取用户之前的评分，然后计算新的评分差值，再更新Redis中的评分总和
-		if err != nil {
-			errCh <- err
-			wg.Done()
-			return
-		}
-		err = redis.UpdateUserRate(p)
-		if err != nil {
-			errCh <- err
-			wg.Done()
-			return
-		}
-		errCh <- nil
-		wg.Done()
-	}(p)
 	wg.Add(1)
 	go func(p *models.UserRateBook) { //MySQL部分的更新
 		RB, err := mysql.GetRateBookByID(p.BookID)
@@ -191,6 +180,47 @@ func RateUpdateBook(p *models.UserRateBook) models.ResCode {
 			return
 		}
 		err = mysql.UpdateUserRate(p)
+		if err != nil {
+			errCh <- err
+			wg.Done()
+			return
+		}
+		err = mysql.UpdateBookScore(RB)
+		if err != nil {
+			errCh <- err
+			wg.Done()
+			return
+		}
+		errCh <- nil
+		wg.Done()
+	}(p)
+	wg.Add(1)
+	go func(p *models.UserRateBook) {
+		BeforeScore, err := redis.GetBeforeBookScore(p.UserID, p.BookID)
+		if err != nil {
+			errCh <- err
+			wg.Done()
+			return
+		}
+		err = redis.CacheBookScoreSum(p.BookID, p.Score-BeforeScore) //评分更新需要先获取用户之前的评分，然后计算新的评分差值，再更新Redis中的评分总和
+		if err != nil {
+			errCh <- err
+			wg.Done()
+			return
+		}
+		err = redis.UpdateUserRate(p)
+		if err != nil {
+			errCh <- err
+			wg.Done()
+			return
+		}
+		AllScore, Count, err := redis.GetAllScoreAndCount(p.BookID)
+		if err != nil {
+			errCh <- err
+			wg.Done()
+			return
+		}
+		err = redis.AddScoreRank(p.BookID, AllScore, Count)
 		if err != nil {
 			errCh <- err
 			wg.Done()

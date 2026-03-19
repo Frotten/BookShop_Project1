@@ -57,3 +57,34 @@ func UpdateUserRate(p *models.UserRateBook) error {
 	field := strconv.FormatInt(p.BookID, 10)
 	return RDB.HSet(ctx, key, field, p.Score).Err()
 }
+
+func GetAllScoreAndCount(BookID int64) (int64, int64, error) {
+	key1 := "book:score:" + strconv.FormatInt(BookID, 10)
+	key2 := "book:score_count:" + strconv.FormatInt(BookID, 10)
+	ScoreString, err := RDB.Get(ctx, key1).Result()
+	if err != nil {
+		return 0, 0, err
+	}
+	CountString, err := RDB.Get(ctx, key2).Result()
+	if err != nil {
+		return 0, 0, err
+	}
+	Score, err := strconv.ParseInt(ScoreString, 10, 64)
+	if err != nil {
+		return 0, 0, err
+	}
+	Count, err := strconv.ParseInt(CountString, 10, 64)
+	if err != nil {
+		return 0, 0, err
+	}
+	return Score, Count, err
+}
+
+func AddScoreRank(BookID, AllScore, Count int64) error {
+	key := "book:rank:score"
+	Score := models.WeightedCalculation(AllScore, Count)
+	return RDB.ZAdd(ctx, key, redis.Z{
+		Score:  Score,
+		Member: BookID,
+	}).Err()
+}

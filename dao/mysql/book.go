@@ -91,3 +91,11 @@ func UpdateUserRate(p *models.UserRateBook) error {
 	result := DB.Save(p)
 	return result.Error
 }
+
+func UpdateBookScore(RB *models.RateBook) error {
+	Count := RB.ScoreCount
+	Score := RB.Score
+	Ans := models.WeightedCalculation(Score, Count)
+	AnsInt := int64(Ans * 100)
+	return DB.Model(&models.Book{}).Where("book_id = ?", RB.BookID).Update("score", AnsInt).Error
+}

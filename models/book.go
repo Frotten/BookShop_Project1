@@ -2,6 +2,9 @@ package models
 
 import "gorm.io/datatypes"
 
+const AvgAllBooks = 5.0
+const AvgAllRateUser = 20
+
 type Book struct {
 	BookID     int64          `json:"book_id" db:"book_id" gorm:"primaryKey;autoIncrement"`
 	Title      string         `json:"title" db:"title" gorm:"not null;size:100"`
@@ -45,4 +48,8 @@ type UserRateBook struct {
 	UserID int64 `json:"user_id" db:"user_id" gorm:"primaryKey;autoIncrement:false;not null"`
 	BookID int64 `json:"book_id" db:"book_id" gorm:"primaryKey;autoIncrement:false;not null"`
 	Score  int64 `json:"score" db:"score" gorm:"not null"`
+}
+
+func WeightedCalculation(AllScore, Count int64) float64 {
+	return (float64(AllScore)/float64(Count)*float64(Count) + AvgAllBooks*AvgAllRateUser) / (float64(Count) + AvgAllRateUser)
 }
