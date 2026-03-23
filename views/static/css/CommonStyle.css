@@ -240,3 +240,136 @@ button i {
 .mt-2 { margin-top: 0.5rem; }
 .mb-2 { margin-bottom: 0.5rem; }
 .gap-2 { gap: 0.5rem; }
+
+.home-layout {
+    display: flex;
+    justify-content: space-between;
+    gap: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+.book-grid-section {
+    flex: 1; /* 占满剩余空间 */
+    min-width: 0; /* 防止内容溢出 */
+}
+.ranking-section {
+    width: 280px; /* 固定宽度，贴合右侧 */
+    flex-shrink: 0;
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(4px);
+    border-radius: var(--radius);
+    padding: 1.2rem 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    box-shadow: var(--shadow);
+    height: fit-content;
+}
+.ranking-tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.2rem;
+    border-bottom: 1px solid var(--gray-200);
+    padding-bottom: 0.5rem;
+}
+.tab-btn {
+    flex: 1;
+    background: transparent;
+    color: var(--gray-600);
+    box-shadow: none;
+    border: none;
+    padding: 0.5rem;
+    font-weight: 500;
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+.tab-btn i {
+    font-size: 1rem;
+}
+.tab-btn:hover {
+    background: rgba(79, 70, 229, 0.05);
+    color: var(--primary);
+    transform: none;
+    box-shadow: none;
+}
+.tab-btn.active {
+    color: var(--primary);
+    border-bottom: 2px solid var(--primary);
+    background: transparent;
+}
+.ranking-list {
+    max-height: 400px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+.ranking-list::-webkit-scrollbar {
+    width: 6px;
+}
+.ranking-list::-webkit-scrollbar-track {
+    background: var(--gray-100);
+    border-radius: 10px;
+}
+.ranking-list::-webkit-scrollbar-thumb {
+    background: var(--primary-light);
+    border-radius: 10px;
+}
+.ranking-item {
+    display: flex;
+    align-items: center;
+    padding: 0.7rem 0.5rem;
+    border-bottom: 1px solid var(--gray-200);
+    cursor: pointer;
+    transition: background 0.2s;
+    border-radius: var(--radius-sm);
+}
+.ranking-item:hover {
+    background: var(--gray-100);
+}
+.ranking-item .rank-num {
+    width: 24px;
+    height: 24px;
+    background: var(--primary-light);
+    color: white;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-right: 0.8rem;
+    flex-shrink: 0;
+}
+.ranking-item .rank-info {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.ranking-item .rank-title {
+    font-weight: 500;
+    font-size: 0.95rem;
+}
+.ranking-item .rank-value {
+    font-weight: 600;
+    color: var(--primary);
+    margin-left: 1rem;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.ranking-item i {
+    margin-right: 0.2rem;
+    font-size: 0.9rem;
+}
+.loading-tip {
+    text-align: center;
+    color: var(--gray-600);
+    padding: 1rem;
+}
+@media (max-width: 768px) {
+    .home-layout {
+        flex-direction: column;
+    }
+    .ranking-section {
+        width: 100%;
+    }
+}

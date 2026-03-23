@@ -15,7 +15,7 @@ import (
 func ScoreBookHandle(c *gin.Context) {
 	PageString := c.Param("page")
 	Page, err := strconv.ParseInt(PageString, 10, 64)
-	if err != nil {
+	if err != nil || Page <= 0 {
 		HandleResponse(c, models.CodeInvalidParam)
 		return
 	}
@@ -143,4 +143,14 @@ func RateBookHandle(c *gin.Context) {
 		return
 	}
 	HandleSuccess(c, nil)
+}
+
+func TopScoreHandle(c *gin.Context) {
+	ListBook, res := logic.GetTopScoreList()
+	if res != models.CodeSuccess {
+		zap.L().Error("GetTopScoreList failed")
+		HandleResponse(c, res)
+		return
+	}
+	HandleSuccess(c, ListBook)
 }

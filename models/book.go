@@ -19,16 +19,16 @@ type Book struct {
 }
 
 type BookCache struct {
-	BookID     int64    `json:"book_id"`
-	Title      string   `json:"title"`
-	Author     string   `json:"author"`
-	Publisher  string   `json:"publisher"`
-	Stock      int64    `json:"stock"`
-	Sales      int64    `json:"sales"`
-	Price      int64    `json:"price"`
-	Score      int64    `json:"score"`
-	CoverImage string   `json:"cover_image"`
-	Tags       []string `json:"tags"`
+	BookID     int64    `json:"book_id" redis:"book_id"`
+	Title      string   `json:"title" redis:"title"`
+	Author     string   `json:"author" redis:"author"`
+	Publisher  string   `json:"publisher" redis:"publisher"`
+	Stock      int64    `json:"stock" redis:"stock"`
+	Sales      int64    `json:"sales" redis:"sales"`
+	Price      float64  `json:"price" redis:"price"`
+	Score      float64  `json:"score" redis:"score"`
+	CoverImage string   `json:"cover_image" redis:"cover_image"`
+	Tags       []string `json:"tags" redis:"tags"`
 }
 
 type Page struct {
@@ -48,6 +48,14 @@ type UserRateBook struct {
 	UserID int64 `json:"user_id" db:"user_id" gorm:"primaryKey;autoIncrement:false;not null"`
 	BookID int64 `json:"book_id" db:"book_id" gorm:"primaryKey;autoIncrement:false;not null"`
 	Score  int64 `json:"score" db:"score" gorm:"not null"`
+}
+
+type ListBook struct {
+	BookID int64    `json:"book_id" redis:"book_id"`
+	Title  string   `json:"title" redis:"title"`
+	Score  float64  `json:"score" redis:"score"`
+	Sales  int64    `json:"sales" redis:"sales"`
+	Tags   []string `json:"tags" redis:"tags"`
 }
 
 func WeightedCalculation(AllScore, Count int64) float64 {

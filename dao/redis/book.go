@@ -3,13 +3,41 @@ package redis
 import (
 	"Project1_Shop/models"
 	"context"
+	"encoding/json"
 	"errors"
+	"math/rand"
 	"strconv"
+	"time"
 
 	"github.com/redis/go-redis/v9"
 )
 
 var ctx = context.Background()
+
+const BufferTime = time.Minute * 3
+const ListTime = time.Hour * 24 * 7
+
+func CheckEmpty(key string) bool {
+	EmptyKey := GetEmpty(key)
+	Emp, err := RDB.Get(ctx, EmptyKey).Result()
+	if Emp == "__NULL__" || err == nil {
+		return false
+	}
+	return true
+}
+
+func SetEmpty(key string) {
+	EmptyKey := GetEmpty(key)
+	RDB.Set(ctx, EmptyKey, "__NULL__", BufferTime)
+}
+
+func GetEmpty(key string) string {
+	return "empty:" + key
+}
+
+func RandTTL(T time.Duration) time.Duration {
+	return T + time.Duration(rand.Intn(600))*time.Second
+}
 
 func CacheBookScoreCount(bookID int64, count int64) error {
 	key := "book:score_count:" + strconv.FormatInt(bookID, 10)
@@ -87,4 +115,116 @@ func AddScoreRank(BookID, AllScore, Count int64) error {
 		Score:  Score,
 		Member: BookID,
 	}).Err()
+}
+
+func UpdateBook(BookID int64, AllScore, Count int64) error {
+	key := "book:" + strconv.FormatInt(BookID, 10)
+	ok := CheckEmpty(key)
+	if !ok {
+		return errors.New("already exist empty key")
+	}
+	Score := models.WeightedCalculation(AllScore, Count)
+	_, err := RDB.HGet(ctx, key, "score").Result()
+	if err != nil {
+		SetEmpty(key)
+		return err
+	}
+	_, err = RDB.HSet(ctx, key, "score", Score).Result()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func GetScoreList() ([]redis.Z, error) {
+	key := "book:rank:score"
+	results, err := RDB.ZRevRangeWithScores(ctx, key, 0, 9).Result()
+	if err != nil {
+		return nil, err
+	}
+	return results, nil
+}
+
+func GetBookSummaryByBookID(BookID int64) (*models.ListBook, error) {
+	key := "book:summary:" + strconv.FormatInt(BookID, 10)
+	ok := CheckEmpty(key)
+	if !ok {
+		return nil, errors.New("already exist empty")
+	}
+	data, err := RDB.HGetAll(ctx, key).Result()
+	if err != nil {
+		SetEmpty(key)
+		return &models.ListBook{
+			BookID: -1,
+		}, err
+	}
+	Sales, err := strconv.ParseInt(data["sales"], 10, 64)
+	if err != nil {
+		return nil, err
+	}
+	Score, err := strconv.ParseFloat(data["score"], 64)
+	if err != nil {
+		return nil, err
+	}
+	var tags []string
+	err = json.Unmarshal([]byte(data["tags"]), &tags)
+	return &models.ListBook{
+		BookID: BookID,
+		Title:  data["title"],
+		Sales:  Sales,
+		Score:  Score,
+		Tags:   tags,
+	}, nil
+}
+
+func SetBookSummary(List *models.ListBook) error {
+	key := "book:summary:" + strconv.FormatInt(List.BookID, 10)
+	defer RDB.Del(ctx, GetEmpty(key))
+	_, err := RDB.HSet(ctx, key, List).Result()
+	RDB.Expire(ctx, key, RandTTL(ListTime))
+	return err
+}
+
+func GetBookByBookID(BookID int64) (*models.BookCache, error) {
+	key := "book:" + strconv.FormatInt(BookID, 10)
+	ok := CheckEmpty(key)
+	if !ok {
+		return nil, errors.New("already exist empty")
+	}
+	data, err := RDB.HGetAll(ctx, key).Result()
+	if err != nil {
+		return &models.BookCache{
+			BookID: -1,
+		}, err
+	}
+	Sales, err := strconv.ParseInt(data["sales"], 10, 64)
+	if err != nil {
+		return nil, err
+	}
+	Stock, err := strconv.ParseInt(data["stock"], 10, 64)
+	if err != nil {
+		return nil, err
+	}
+	Price, err := strconv.ParseFloat(data["price"], 64)
+	if err != nil {
+		return nil, err
+	}
+	Score, err := strconv.ParseFloat(data["score"], 64)
+	if err != nil {
+		return nil, err
+	}
+	var tags []string
+	err = json.Unmarshal([]byte(data["tags"]), &tags)
+	return &models.BookCache{
+		BookID:     BookID,
+		Title:      data["title"],
+		Sales:      Sales,
+		Score:      Score,
+		Author:     data["author"],
+		Publisher:  data["publisher"],
+		Stock:      Stock,
+		Price:      Price,
+		CoverImage: data["cover_image"],
+		Tags:       tags,
+	}, nil
 }

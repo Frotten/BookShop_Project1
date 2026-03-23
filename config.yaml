@@ -14,7 +14,7 @@ log:
 
 mysql:
   host: "192.168.56.101"
-  port: 3306
+  port: 7000
   user: "bookuser"
   password: "zheshimima"
   dbname: "bookstore"

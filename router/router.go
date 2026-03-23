@@ -28,6 +28,8 @@ func SetUp() *gin.Engine {
 		v1.GET("/getBooksJSON", controllers.GetBooksJSON)
 		v1.GET("/getBooksJSON/:page", controllers.ScoreBookHandle)
 		v1.GET("/getBookDetail/:book_id", controllers.GetBookParamHandle)
+		//v1.GET("/topSale", controllers.TopSaleHandle)
+		v1.GET("/topScore", controllers.TopScoreHandle)
 		Login := v1.Use(middlewares.JWTAuthMiddleware())
 		{
 			Login.POST("/rateBook", controllers.RateBookHandle)

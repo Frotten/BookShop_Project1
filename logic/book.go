@@ -5,7 +5,6 @@ import (
 	"Project1_Shop/dao/redis"
 	"Project1_Shop/models"
 	"encoding/json"
-	"sync"
 )
 
 func AddBook(p *models.AddBookParam) models.ResCode {
@@ -32,6 +31,22 @@ func AddBook(p *models.AddBookParam) models.ResCode {
 	return models.CodeSuccess
 }
 
+func BookListToCache(book *models.Book) (*models.ListBook, error) {
+	var tags []string
+	if len(book.Tags) > 0 {
+		if err := json.Unmarshal(book.Tags, &tags); err != nil {
+			return nil, err
+		}
+	}
+	return &models.ListBook{
+		BookID: book.BookID,
+		Title:  book.Title,
+		Sales:  book.Sales,
+		Score:  float64(book.Score) / 100,
+		Tags:   tags,
+	}, nil
+}
+
 func BookToCache(book *models.Book) (*models.BookCache, error) {
 	var tags []string
 	if len(book.Tags) > 0 {
@@ -46,8 +61,8 @@ func BookToCache(book *models.Book) (*models.BookCache, error) {
 		Publisher:  book.Publisher,
 		Stock:      book.Stock,
 		Sales:      book.Sales,
-		Price:      book.Price,
-		Score:      book.Score,
+		Price:      float64(book.Price) / 100,
+		Score:      float64(book.Score) / 100,
 		CoverImage: book.CoverImage,
 		Tags:       tags,
 	}, nil
@@ -74,167 +89,96 @@ func DeleteBook(ID int64) models.ResCode {
 	return models.CodeServerBusy
 }
 
-func RateNewBook(p *models.UserRateBook) models.ResCode {
-	errCh := make(chan error, 2)
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func(p *models.UserRateBook) {
-		RB, err := mysql.GetRateBookByID(p.BookID)
-		if err != nil {
-			errCh <- err
-			wg.Done()
-			return
-		}
-		RB.ScoreCount++
-		RB.Score += p.Score
-		//更新MySQL数据库中的评分信息
-		err = mysql.UpdateRateBook(RB)
-		if err != nil {
-			errCh <- err
-			wg.Done()
-			return
-		}
-		err = mysql.UpdateUserRate(p)
-		if err != nil {
-			errCh <- err
-			wg.Done()
-			return
-		}
-		err = mysql.UpdateBookScore(RB)
-		if err != nil {
-			errCh <- err
-			wg.Done()
-			return
-		}
-		errCh <- nil
-		wg.Done()
-	}(p)
-	wg.Add(1)
-	go func(p *models.UserRateBook) {
-		err := redis.CacheBookScoreCount(p.BookID, 1)
-		if err != nil {
-			errCh <- err
-			wg.Done()
-			return
-		}
-		err = redis.CacheBookScoreSum(p.BookID, p.Score)
-		if err != nil {
-			errCh <- err
-			wg.Done()
-			return
-		}
-		err = redis.UpdateUserRate(p)
-		if err != nil {
-			errCh <- err
-			wg.Done()
-			return
-		}
-		AllScore, Count, err := redis.GetAllScoreAndCount(p.BookID)
-		if err != nil {
-			errCh <- err
-			wg.Done()
-			return
-		}
-		err = redis.AddScoreRank(p.BookID, AllScore, Count)
-		if err != nil {
-			errCh <- err
-			wg.Done()
-			return
-		}
-		errCh <- nil
-		wg.Done()
-	}(p)
-	wg.Wait()
-	close(errCh)
-	for err := range errCh {
-		if err != nil {
-			return models.CodeServerBusy
-		}
+func RateNewBook(p *models.UserRateBook) models.ResCode { //这里必须保证MySQL先成功才能去缓存Redis，不能并发
+	RB, err := mysql.GetRateBookByID(p.BookID)
+	if err != nil {
+		return models.CodeInvalidParam
+	}
+	RB.ScoreCount++
+	RB.Score += p.Score
+	//更新MySQL数据库中的评分信息
+	err = mysql.UpdateRateBook(RB)
+	if err != nil {
+		return models.CodeServerBusy
+	}
+	err = mysql.UpdateUserRate(p)
+	if err != nil {
+		return models.CodeServerBusy
+	}
+	err = mysql.UpdateBookScore(RB)
+	if err != nil {
+		return models.CodeServerBusy
+	}
+	err = redis.CacheBookScoreCount(p.BookID, 1)
+	if err != nil {
+		return models.CodeServerBusy
+	}
+	err = redis.CacheBookScoreSum(p.BookID, p.Score)
+	if err != nil {
+		return models.CodeServerBusy
+	}
+	err = redis.UpdateUserRate(p)
+	if err != nil {
+		return models.CodeServerBusy
+	}
+	AllScore, Count, err := redis.GetAllScoreAndCount(p.BookID)
+	if err != nil {
+		return models.CodeServerBusy
+	}
+	err = redis.AddScoreRank(p.BookID, AllScore, Count)
+	if err != nil {
+		return models.CodeServerBusy
+	}
+	err = redis.UpdateBook(p.BookID, AllScore, Count)
+	if err != nil {
+		return models.CodeServerBusy
 	}
 	return models.CodeSuccess
 }
 
 func RateUpdateBook(p *models.UserRateBook) models.ResCode {
-	errCh := make(chan error, 2)
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func(p *models.UserRateBook) { //MySQL部分的更新
-		RB, err := mysql.GetRateBookByID(p.BookID)
-		if err != nil {
-			errCh <- err
-			wg.Done()
-			return
-		}
-		BeforeScore, err := mysql.GetBeforeBookScore(p)
-		if err != nil {
-			errCh <- err
-			wg.Done()
-			return
-		}
-		RB.Score = RB.Score + p.Score - BeforeScore
-		//更新MySQL数据库中的评分信息
-		err = mysql.UpdateRateBook(RB)
-		if err != nil {
-			errCh <- err
-			wg.Done()
-			return
-		}
-		err = mysql.UpdateUserRate(p)
-		if err != nil {
-			errCh <- err
-			wg.Done()
-			return
-		}
-		err = mysql.UpdateBookScore(RB)
-		if err != nil {
-			errCh <- err
-			wg.Done()
-			return
-		}
-		errCh <- nil
-		wg.Done()
-	}(p)
-	wg.Add(1)
-	go func(p *models.UserRateBook) {
-		BeforeScore, err := redis.GetBeforeBookScore(p.UserID, p.BookID)
-		if err != nil {
-			errCh <- err
-			wg.Done()
-			return
-		}
-		err = redis.CacheBookScoreSum(p.BookID, p.Score-BeforeScore) //评分更新需要先获取用户之前的评分，然后计算新的评分差值，再更新Redis中的评分总和
-		if err != nil {
-			errCh <- err
-			wg.Done()
-			return
-		}
-		err = redis.UpdateUserRate(p)
-		if err != nil {
-			errCh <- err
-			wg.Done()
-			return
-		}
-		AllScore, Count, err := redis.GetAllScoreAndCount(p.BookID)
-		if err != nil {
-			errCh <- err
-			wg.Done()
-			return
-		}
-		err = redis.AddScoreRank(p.BookID, AllScore, Count)
-		if err != nil {
-			errCh <- err
-			wg.Done()
-			return
-		}
-		errCh <- nil
-		wg.Done()
-	}(p)
-	wg.Wait()
-	close(errCh)
-	for err := range errCh {
-		if err != nil {
-			return models.CodeServerBusy
-		}
+	RB, err := mysql.GetRateBookByID(p.BookID)
+	BeforeScore, err := mysql.GetBeforeBookScore(p)
+	if err != nil {
+		return models.CodeServerBusy
+	}
+	RB.Score = RB.Score + p.Score - BeforeScore
+	//更新MySQL数据库中的评分信息
+	err = mysql.UpdateRateBook(RB)
+	if err != nil {
+		return models.CodeServerBusy
+	}
+	err = mysql.UpdateUserRate(p)
+	if err != nil {
+		return models.CodeServerBusy
+	}
+	err = mysql.UpdateBookScore(RB)
+	if err != nil {
+		return models.CodeServerBusy
+	}
+	BeforeScore, err = redis.GetBeforeBookScore(p.UserID, p.BookID)
+	if err != nil {
+		return models.CodeServerBusy
+	}
+	err = redis.CacheBookScoreSum(p.BookID, p.Score-BeforeScore) //评分更新需要先获取用户之前的评分，然后计算新的评分差值，再更新Redis中的评分总和
+	if err != nil {
+		return models.CodeServerBusy
+	}
+	err = redis.UpdateUserRate(p)
+	if err != nil {
+		return models.CodeServerBusy
+	}
+	AllScore, Count, err := redis.GetAllScoreAndCount(p.BookID)
+	if err != nil {
+		return models.CodeServerBusy
+	}
+	err = redis.AddScoreRank(p.BookID, AllScore, Count)
+	if err != nil {
+		return models.CodeServerBusy
+	}
+	err = redis.UpdateBook(p.BookID, AllScore, Count)
+	if err != nil {
+		return models.CodeServerBusy
 	}
 	return models.CodeSuccess
 }
@@ -248,4 +192,38 @@ func RateBook(p *models.UserRateBook) models.ResCode {
 		return RateNewBook(p)
 	}
 	return RateUpdateBook(p)
+}
+
+func GetTopScoreList() ([]*models.ListBook, models.ResCode) { //缓存时是否应该防止缓存击穿？
+	results, err := redis.GetScoreList()
+	if err != nil {
+		return nil, models.CodeServerBusy
+	}
+	var Ans []*models.ListBook
+	for _, z := range results {
+		BookID, ok := z.Member.(int64)
+		if !ok {
+			continue
+		}
+		T, err := redis.GetBookSummaryByBookID(BookID)
+		if err != nil {
+			continue
+		}
+		if T.BookID == -1 { //没有在Redis中找到对应目标,在MySQL中尝试
+			Book, err := mysql.GetBookByID(BookID)
+			if err != nil {
+				return nil, models.CodeListError
+			}
+			T, err = BookListToCache(Book)
+			if err != nil {
+				return nil, models.CodeListError
+			}
+			_ = redis.SetBookSummary(T)
+		}
+		if T.Score <= 0 {
+			continue
+		}
+		Ans = append(Ans, T)
+	}
+	return Ans, models.CodeSuccess
 }

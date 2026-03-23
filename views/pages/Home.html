@@ -26,17 +26,31 @@
     </div>
 </header>
 
-<div class="container">
-    <h2><i class="ri-book-shelf-line"></i> 图书列表</h2>
-    <div class="grid" id="book-grid">
-        <!-- 动态插入图书卡片 -->
+<div class="home-layout">
+    <!-- 左侧图书网格 -->
+    <div class="book-grid-section">
+        <h2><i class="ri-book-shelf-line"></i> 图书列表</h2>
+        <div class="grid" id="book-grid">
+            <!-- 动态插入图书卡片 -->
+        </div>
+    </div>
+
+    <!-- 右侧排行榜（固定宽度） -->
+    <div class="ranking-section">
+        <div class="ranking-tabs">
+            <button class="tab-btn active" data-type="sales"><i class="ri-bar-chart-2-line"></i> 销量榜</button>
+            <button class="tab-btn" data-type="score"><i class="ri-star-smile-line"></i> 评分榜</button>
+        </div>
+        <div class="ranking-list" id="ranking-list">
+            <div class="loading-tip">加载中...</div>
+        </div>
     </div>
 </div>
 
 <script src="/static/js/CommonScript.js"></script>
 <script>
     document.addEventListener("DOMContentLoaded", function() {
-        // 1. 检查登录状态并更新导航栏
+        // 1. 检查登录状态
         checkAuth().then(function(loggedIn) {
             const authArea = document.getElementById("auth-area");
             const guestArea = document.getElementById("guest-area");
@@ -49,15 +63,40 @@
             }
         });
 
-        // 2. 获取图书列表并渲染
+        // 2. 获取图书列表
         fetchBooks();
+
+        // 3. 初始化排行榜（默认加载销量榜）
+        fetchRanking('sales');
+
+        // 4. 绑定标签切换事件
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                const type = this.dataset.type;
+                // 切换激活样式
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                // 获取对应排行榜数据
+                fetchRanking(type);
+            });
+        });
+
+        // 5. 排行榜点击跳转详情
+        document.getElementById('ranking-list').addEventListener('click', function(e) {
+            const item = e.target.closest('.ranking-item');
+            if (item && item.dataset.bookId) {
+                window.location.href = `/page/BooksPage?book_id=${item.dataset.bookId}`;
+            }
+        });
     });
+
+    /** ---------- 图书列表相关（保持不变） ---------- */
     async function fetchBooks() {
         try {
             const res = await apiFetch('/api/getBooksJSON', { method: 'GET' });
             const result = await res.json();
             if (result.code === 1000) {
-                renderBooks(result.data.data);
+                renderBooks(result.data.data || []);
             } else {
                 alert('获取图书列表失败：' + result.msg);
             }
@@ -66,6 +105,7 @@
             alert('请求失败，请稍后重试:' + err);
         }
     }
+
     function renderBooks(books) {
         const grid = document.getElementById('book-grid');
         if (!books || books.length === 0) {
@@ -88,24 +128,101 @@
         });
         grid.innerHTML = html;
 
+        // 卡片点击事件（跳转详情/加入购物车）
         grid.addEventListener('click', function(e) {
-            // 1. 先处理按钮点击（加入购物车）
             const button = e.target.closest('button');
             if (button && button.dataset.id) {
                 addToCart(button.dataset.id);
-                return; // 阻止后续跳转
+                return;
             }
-
-            // 2. 处理卡片其余区域点击（跳转详情页）
             const card = e.target.closest('.book-card');
             if (card && card.dataset.bookId) {
-                const bookId = card.dataset.bookId;
-                window.location.href = `/page/BooksPage?book_id=${bookId}`;
+                window.location.href = `/page/BooksPage?book_id=${card.dataset.bookId}`;
             }
         });
     }
-    // 简单的转义函数，防止 XSS
+
+    /** ---------- 排行榜 API 接口（请后端实现） ---------- */
+    // 获取销量排行榜
+    async function fetchSalesRanking() {            //需要接口----------------------------------------------
+        // 示例 API 地址：/api/top/sales
+        // 期望返回数据格式：{ code:1000, data:[ {book_id, title, sales}, ... ] }
+        const res = await apiFetch('/api/topSale', { method: 'GET' });
+        const result = await res.json();
+        if (result.code === 1000) {
+            return result.data || [];
+        } else {
+            throw new Error(result.msg || '获取销量榜失败');
+        }
+    }
+
+    // 获取评分排行榜
+    async function fetchScoreRanking() {            //需要接口---------------------------------------------
+        // 示例 API 地址：/api/top/score
+        // 期望返回数据格式：{ code:1000, data:[ {book_id, title, score}, ... ] }  // score 为整数，需除以100
+        const res = await apiFetch('/api/topScore', { method: 'GET' });
+        const result = await res.json();
+        if (result.code === 1000) {
+            return result.data || [];
+        } else {
+            throw new Error(result.msg || '获取评分榜失败');
+        }
+    }
+
+    /** ---------- 统一排行榜获取与渲染 ---------- */
+    async function fetchRanking(type) {
+        const listEl = document.getElementById('ranking-list');
+        listEl.innerHTML = '<div class="loading-tip">加载中...</div>'; // 显示加载中
+
+        try {
+            let data;
+            if (type === 'sales') {
+                data = await fetchSalesRanking();
+            } else {
+                data = await fetchScoreRanking();
+            }
+            renderRanking(data, type);
+        } catch (err) {
+            console.error(err);
+            listEl.innerHTML = `<div class="loading-tip">加载失败，请稍后重试</div>`;
+        }
+    }
+
+    function renderRanking(items, type) {
+        const listEl = document.getElementById('ranking-list');
+        if (!items || items.length === 0) {
+            listEl.innerHTML = '<div class="loading-tip">暂无数据</div>';
+            return;
+        }
+
+        let html = '';
+        items.slice(0, 10).forEach((item, index) => { // 只展示前10名
+            const rank = index + 1;
+            const title = escapeHtml(item.title || '');
+            let value = '';
+            if (type === 'sales') {
+                value = `<i class="ri-bar-chart-2-line"></i> ${item.sales || 0} 销量`;
+            } else {
+                // 假设后端返回的 score 是整数（如 850 表示 8.50 分）
+                const score = (item.score / 100).toFixed(2);
+                value = `<i class="ri-star-smile-line"></i> ${score} 分`;
+            }
+            html += `
+                <div class="ranking-item" data-book-id="${item.book_id}">
+                    <span class="rank-num">${rank}</span>
+                    <span class="rank-info">
+                        <span class="rank-title">${title}</span>
+                    </span>
+                    <span class="rank-value">${value}</span>
+                </div>
+            `;
+        });
+        listEl.innerHTML = html;
+    }
+
+    // 转义函数（防止XSS）
     function escapeHtml(unsafe) {
+        if (!unsafe) return '';
         return unsafe
             .replace(/&/g, "&amp;")
             .replace(/</g, "&lt;")
