@@ -6,9 +6,12 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
+	"golang.org/x/sync/singleflight"
 )
 
 var RDB *redis.ClusterClient
+
+var G singleflight.Group
 
 //func Init(cfg *settings.RedisConfig) (err error) {
 //	RDB = redis.NewClient(&redis.Options{

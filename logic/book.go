@@ -5,6 +5,9 @@ import (
 	"Project1_Shop/dao/redis"
 	"Project1_Shop/models"
 	"encoding/json"
+	"strconv"
+
+	"go.uber.org/zap"
 )
 
 func AddBook(p *models.AddBookParam) models.ResCode {
@@ -109,29 +112,17 @@ func RateNewBook(p *models.UserRateBook) models.ResCode { //这里必须保证My
 	if err != nil {
 		return models.CodeServerBusy
 	}
-	err = redis.CacheBookScoreCount(p.BookID, 1)
-	if err != nil {
-		return models.CodeServerBusy
-	}
-	err = redis.CacheBookScoreSum(p.BookID, p.Score)
-	if err != nil {
-		return models.CodeServerBusy
-	}
-	err = redis.UpdateUserRate(p)
-	if err != nil {
-		return models.CodeServerBusy
-	}
-	AllScore, Count, err := redis.GetAllScoreAndCount(p.BookID)
-	if err != nil {
-		return models.CodeServerBusy
-	}
-	err = redis.AddScoreRank(p.BookID, AllScore, Count)
-	if err != nil {
-		return models.CodeServerBusy
-	}
-	err = redis.UpdateBook(p.BookID, AllScore, Count)
-	if err != nil {
-		return models.CodeServerBusy
+	//MySQL和Redis的分界线
+	p.Op = models.RateOpNew
+	select {
+	case models.RateChan <- p:
+	default:
+		go func() {
+			err := redis.NewScoreAndRank(p.UserID, p.BookID, p.Score)
+			if err != nil {
+				zap.L().Error("NewScoreAndUpdateRedis Failed", zap.Error(err))
+			}
+		}()
 	}
 	return models.CodeSuccess
 }
@@ -156,29 +147,16 @@ func RateUpdateBook(p *models.UserRateBook) models.ResCode {
 	if err != nil {
 		return models.CodeServerBusy
 	}
-	BeforeScore, err = redis.GetBeforeBookScore(p.UserID, p.BookID)
-	if err != nil {
-		return models.CodeServerBusy
-	}
-	err = redis.CacheBookScoreSum(p.BookID, p.Score-BeforeScore) //评分更新需要先获取用户之前的评分，然后计算新的评分差值，再更新Redis中的评分总和
-	if err != nil {
-		return models.CodeServerBusy
-	}
-	err = redis.UpdateUserRate(p)
-	if err != nil {
-		return models.CodeServerBusy
-	}
-	AllScore, Count, err := redis.GetAllScoreAndCount(p.BookID)
-	if err != nil {
-		return models.CodeServerBusy
-	}
-	err = redis.AddScoreRank(p.BookID, AllScore, Count)
-	if err != nil {
-		return models.CodeServerBusy
-	}
-	err = redis.UpdateBook(p.BookID, AllScore, Count)
-	if err != nil {
-		return models.CodeServerBusy
+	p.Op = models.RateOpUpdate
+	select {
+	case models.RateChan <- p:
+	default:
+		go func() {
+			err := redis.UpdateScoreAndRank(p.UserID, p.BookID, p.Score)
+			if err != nil {
+				zap.L().Error("UpdateScoreAndUpdateRedis Failed", zap.Error(err))
+			}
+		}()
 	}
 	return models.CodeSuccess
 }
@@ -194,33 +172,52 @@ func RateBook(p *models.UserRateBook) models.ResCode {
 	return RateUpdateBook(p)
 }
 
-func GetTopScoreList() ([]*models.ListBook, models.ResCode) { //缓存时是否应该防止缓存击穿？
+func GetTopScoreList() ([]*models.ListBook, models.ResCode) {
 	results, err := redis.GetScoreList()
 	if err != nil {
 		return nil, models.CodeServerBusy
 	}
 	var Ans []*models.ListBook
 	for _, z := range results {
-		BookID, ok := z.Member.(int64)
-		if !ok {
+		var BookID int64
+		switch v := z.Member.(type) {
+		case int64:
+			BookID = v
+		case string:
+			var err error
+			BookID, err = strconv.ParseInt(v, 10, 64)
+			if err != nil {
+				zap.L().Error("ParseInt failed", zap.String("member", v), zap.Error(err))
+				continue
+			}
+		default:
+			zap.L().Error("unexpected member type", zap.Any("value", v))
 			continue
 		}
 		T, err := redis.GetBookSummaryByBookID(BookID)
 		if err != nil {
 			continue
 		}
-		if T.BookID == -1 { //没有在Redis中找到对应目标,在MySQL中尝试
-			Book, err := mysql.GetBookByID(BookID)
+		if T.BookID == -1 {
+			// 合并并发请求，只有一个会执行函数体
+			v, err, _ := redis.G.Do(strconv.FormatInt(BookID, 10), func() (interface{}, error) {
+				Book, err := mysql.GetBookByID(BookID)
+				if err != nil {
+					return nil, err
+				}
+				T, err := BookListToCache(Book)
+				if err != nil {
+					return nil, err
+				}
+				_ = redis.SetBookSummary(T)
+				return T, nil
+			})
 			if err != nil {
-				return nil, models.CodeListError
+				continue
 			}
-			T, err = BookListToCache(Book)
-			if err != nil {
-				return nil, models.CodeListError
-			}
-			_ = redis.SetBookSummary(T)
+			T = v.(*models.ListBook)
 		}
-		if T.Score <= 0 {
+		if T.Score < 0 {
 			continue
 		}
 		Ans = append(Ans, T)

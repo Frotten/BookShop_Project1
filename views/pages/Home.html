@@ -163,6 +163,7 @@
         const res = await apiFetch('/api/topScore', { method: 'GET' });
         const result = await res.json();
         if (result.code === 1000) {
+            console.log("result:", result)
             return result.data || [];
         } else {
             throw new Error(result.msg || '获取评分榜失败');
@@ -203,9 +204,7 @@
             if (type === 'sales') {
                 value = `<i class="ri-bar-chart-2-line"></i> ${item.sales || 0} 销量`;
             } else {
-                // 假设后端返回的 score 是整数（如 850 表示 8.50 分）
-                const score = (item.score / 100).toFixed(2);
-                value = `<i class="ri-star-smile-line"></i> ${score} 分`;
+                value = `<i class="ri-star-smile-line"></i> ${item.score} 分`;
             }
             html += `
                 <div class="ranking-item" data-book-id="${item.book_id}">

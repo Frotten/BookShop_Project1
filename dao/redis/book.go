@@ -80,10 +80,10 @@ func GetBeforeBookScore(userID, bookID int64) (int64, error) {
 	return Score, nil
 }
 
-func UpdateUserRate(p *models.UserRateBook) error {
-	key := "user:rating:" + strconv.FormatInt(p.UserID, 10)
-	field := strconv.FormatInt(p.BookID, 10)
-	return RDB.HSet(ctx, key, field, p.Score).Err()
+func UpdateUserRate(UserID, BookID, Score int64) error {
+	key := "user:rating:" + strconv.FormatInt(UserID, 10)
+	field := strconv.FormatInt(BookID, 10)
+	return RDB.HSet(ctx, key, field, Score).Err()
 }
 
 func GetAllScoreAndCount(BookID int64) (int64, int64, error) {
@@ -153,6 +153,9 @@ func GetBookSummaryByBookID(BookID int64) (*models.ListBook, error) {
 	}
 	data, err := RDB.HGetAll(ctx, key).Result()
 	if err != nil {
+		return nil, err
+	}
+	if len(data) == 0 {
 		SetEmpty(key)
 		return &models.ListBook{
 			BookID: -1,
@@ -227,4 +230,60 @@ func GetBookByBookID(BookID int64) (*models.BookCache, error) {
 		CoverImage: data["cover_image"],
 		Tags:       tags,
 	}, nil
+}
+
+func NewScoreAndRank(UserID, BookID, Score int64) error {
+	err := CacheBookScoreCount(BookID, 1)
+	if err != nil {
+		return err
+	}
+	err = CacheBookScoreSum(BookID, Score)
+	if err != nil {
+		return err
+	}
+	err = UpdateUserRate(UserID, BookID, Score)
+	if err != nil {
+		return err
+	}
+	AllScore, Count, err := GetAllScoreAndCount(BookID)
+	if err != nil {
+		return err
+	}
+	err = AddScoreRank(BookID, AllScore, Count)
+	if err != nil {
+		return err
+	}
+	err = UpdateBook(BookID, AllScore, Count)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func UpdateScoreAndRank(UserID, BookID, Score int64) error {
+	BeforeScore, err := GetBeforeBookScore(UserID, BookID)
+	if err != nil {
+		return err
+	}
+	err = CacheBookScoreSum(BookID, Score-BeforeScore) //评分更新需要先获取用户之前的评分，然后计算新的评分差值，再更新Redis中的评分总和
+	if err != nil {
+		return err
+	}
+	err = UpdateUserRate(UserID, BookID, Score)
+	if err != nil {
+		return err
+	}
+	AllScore, Count, err := GetAllScoreAndCount(BookID)
+	if err != nil {
+		return err
+	}
+	err = AddScoreRank(BookID, AllScore, Count)
+	if err != nil {
+		return err
+	}
+	err = UpdateBook(BookID, AllScore, Count)
+	if err != nil {
+		return err
+	}
+	return nil
 }

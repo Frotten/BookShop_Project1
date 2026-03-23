@@ -45,6 +45,7 @@ type RateBook struct {
 }
 
 type UserRateBook struct {
+	Op     int   `json:"Op"`
 	UserID int64 `json:"user_id" db:"user_id" gorm:"primaryKey;autoIncrement:false;not null"`
 	BookID int64 `json:"book_id" db:"book_id" gorm:"primaryKey;autoIncrement:false;not null"`
 	Score  int64 `json:"score" db:"score" gorm:"not null"`

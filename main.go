@@ -4,6 +4,7 @@ import (
 	"Project1_Shop/dao/mysql"
 	"Project1_Shop/dao/redis"
 	"Project1_Shop/logger"
+	"Project1_Shop/pkg/Worker"
 	"Project1_Shop/pkg/snowflake"
 	"Project1_Shop/router"
 	"Project1_Shop/settings"
@@ -22,6 +23,7 @@ import (
 )
 
 func main() {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	//1，加载配置
 	if err := settings.Init(); err != nil {
 		fmt.Printf("init settings failed, err:%v\n", err)
@@ -54,7 +56,9 @@ func main() {
 	}
 	//5，注册路由
 	r := router.SetUp()
-	//6，启动服务（优雅关机）
+	//启动工作池,并通过ctx使其可以自动关闭
+	go Worker.StartRateWorker(ctx)
+	//启动服务（优雅关机）
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%d", viper.GetInt("app.port")),
 		Handler: r,
@@ -68,7 +72,6 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 	zap.L().Info("Shutdown Server ...")
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := srv.Shutdown(ctx); err != nil {
 		zap.L().Fatal("Server Shutdown: ", zap.Error(err))

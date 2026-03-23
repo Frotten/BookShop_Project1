@@ -11,6 +11,7 @@ require (
 	github.com/redis/go-redis/v9 v9.18.0
 	github.com/spf13/viper v1.21.0
 	go.uber.org/zap v1.27.1
+	golang.org/x/sync v0.19.0
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 	gorm.io/datatypes v1.0.5
 	gorm.io/driver/mysql v1.6.0
