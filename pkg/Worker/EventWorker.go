@@ -1,7 +1,7 @@
 package Worker
 
 import (
-	"Project1_Shop/dao/redis"
+	"Project1_Shop/logic"
 	"Project1_Shop/models"
 	"context"
 	"fmt"
@@ -26,9 +26,9 @@ func rateWorker(ctx context.Context, id int) {
 			var err error
 			switch t.Op {
 			case models.RateOpNew:
-				err = redis.NewScoreAndRank(t.UserID, t.BookID, t.Score)
+				err = logic.NewScoreAndRank(t.UserID, t.BookID, t.Score)
 			case models.RateOpUpdate:
-				err = redis.UpdateScoreAndRank(t.UserID, t.BookID, t.Score)
+				err = logic.UpdateScoreAndRank(t.UserID, t.BookID, t.Score)
 			default:
 				err = fmt.Errorf("unknown Op")
 			}

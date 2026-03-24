@@ -72,8 +72,16 @@
     }
     function renderBook(book){
         const panel = document.getElementById("bookInfo")
-        panel.innerHTML = `
 
+        // 如果 tags 是数组，转换为逗号分隔的字符串
+        let tagsString = ''
+        if (Array.isArray(book.tags)) {
+            tagsString = book.tags.join(', ')
+        } else if (typeof book.tags === 'string') {
+            tagsString = book.tags
+        }
+
+        panel.innerHTML = `
 <h3><i class="ri-edit-line"></i> 编辑书籍</h3>
 
 <div style="display:flex; gap:30px; margin-top:15px;">
@@ -95,7 +103,7 @@
         <input
             id="cover_image"
             value="${book.cover_image}"
-            placeholder="封面图片URL"
+            placeholder="封面图片 URL"
             style="margin-top:10px;"
             oninput="updatePreview()"
         >
@@ -132,13 +140,8 @@
     </div>
 
     <div class="form-item">
-        <label>评分：</label>
-        <input id="score" type="number" value="${book.score/100}" placeholder="请输入评分">
-    </div>
-
-    <div class="form-item">
         <label>标签：</label>
-        <input id="tags" value="${book.tags}" placeholder="例如：小说,文学">
+        <input id="tags" value="${tagsString}" placeholder="例如：小说，文学">
     </div>
 
     <button
@@ -162,6 +165,11 @@
             alert("请先查询书籍")
             return
         }
+
+        // 将逗号分隔的标签字符串转换为数组
+        const tagsInput = document.getElementById("tags").value.trim()
+        const tagsArray = tagsInput ? tagsInput.split(/[,,]/).map(t => t.trim()).filter(t => t) : []
+
         const data = {
             book_id: currentBook.book_id,
             title: document.getElementById("title").value,
@@ -169,8 +177,7 @@
             publisher: document.getElementById("publisher").value,
             price: Math.round(document.getElementById("price").value * 100),
             stock: parseInt(document.getElementById("stock").value),
-            score: Math.round(document.getElementById("score").value * 100),
-            tags: document.getElementById("tags").value,
+            tags: tagsArray,
             cover_image: document.getElementById("cover_image").value
         }
         try{

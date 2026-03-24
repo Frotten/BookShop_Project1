@@ -16,6 +16,7 @@ var ctx = context.Background()
 
 const BufferTime = time.Minute * 3
 const ListTime = time.Hour * 24 * 7
+const BookTime = time.Hour * 24 * 7 * 2
 
 func CheckEmpty(key string) bool {
 	EmptyKey := GetEmpty(key)
@@ -117,8 +118,31 @@ func AddScoreRank(BookID, AllScore, Count int64) error {
 	}).Err()
 }
 
-func UpdateBook(BookID int64, AllScore, Count int64) error {
-	key := "book:" + strconv.FormatInt(BookID, 10)
+func SetBook(Book *models.Book, AllScore, Count int64) error {
+	key := "book:" + strconv.FormatInt(Book.BookID, 10)
+	Score := models.WeightedCalculation(AllScore, Count)
+	_, err := RDB.HSet(ctx, key, map[string]interface{}{
+		"book_id":     Book.BookID,
+		"title":       Book.Title,
+		"author":      Book.Author,
+		"publisher":   Book.Publisher,
+		"stock":       Book.Stock,
+		"sales":       Book.Sales,
+		"price":       Book.Price,
+		"score":       Score,
+		"cover_image": Book.CoverImage,
+		"tags":        string(Book.Tags),
+	}).Result()
+	if err != nil {
+		return err
+	}
+	RDB.Del(ctx, GetEmpty(key))
+	RDB.Expire(ctx, key, RandTTL(BookTime))
+	return nil
+}
+
+func UpdateBook(Book *models.Book, AllScore, Count int64) error {
+	key := "book:" + strconv.FormatInt(Book.BookID, 10)
 	ok := CheckEmpty(key)
 	if !ok {
 		return errors.New("already exist empty key")
@@ -129,10 +153,23 @@ func UpdateBook(BookID int64, AllScore, Count int64) error {
 		SetEmpty(key)
 		return err
 	}
-	_, err = RDB.HSet(ctx, key, "score", Score).Result()
+	_, err = RDB.HSet(ctx, key, map[string]interface{}{
+		"book_id":     Book.BookID,
+		"title":       Book.Title,
+		"author":      Book.Author,
+		"publisher":   Book.Publisher,
+		"stock":       Book.Stock,
+		"sales":       Book.Sales,
+		"price":       Book.Price,
+		"score":       Score,
+		"cover_image": Book.CoverImage,
+		"tags":        string(Book.Tags),
+	}).Result()
 	if err != nil {
 		return err
 	}
+	RDB.Del(ctx, GetEmpty(key))
+	RDB.Expire(ctx, key, RandTTL(BookTime))
 	return nil
 }
 
@@ -183,7 +220,17 @@ func GetBookSummaryByBookID(BookID int64) (*models.ListBook, error) {
 func SetBookSummary(List *models.ListBook) error {
 	key := "book:summary:" + strconv.FormatInt(List.BookID, 10)
 	defer RDB.Del(ctx, GetEmpty(key))
-	_, err := RDB.HSet(ctx, key, List).Result()
+	tagsJson, err := json.Marshal(List.Tags)
+	if err != nil {
+		return err
+	}
+	_, err = RDB.HSet(ctx, key, map[string]interface{}{
+		"book_id": List.BookID,
+		"title":   List.Title,
+		"score":   List.Score,
+		"sales":   List.Sales,
+		"tags":    tagsJson,
+	}).Result()
 	RDB.Expire(ctx, key, RandTTL(ListTime))
 	return err
 }
@@ -230,60 +277,4 @@ func GetBookByBookID(BookID int64) (*models.BookCache, error) {
 		CoverImage: data["cover_image"],
 		Tags:       tags,
 	}, nil
-}
-
-func NewScoreAndRank(UserID, BookID, Score int64) error {
-	err := CacheBookScoreCount(BookID, 1)
-	if err != nil {
-		return err
-	}
-	err = CacheBookScoreSum(BookID, Score)
-	if err != nil {
-		return err
-	}
-	err = UpdateUserRate(UserID, BookID, Score)
-	if err != nil {
-		return err
-	}
-	AllScore, Count, err := GetAllScoreAndCount(BookID)
-	if err != nil {
-		return err
-	}
-	err = AddScoreRank(BookID, AllScore, Count)
-	if err != nil {
-		return err
-	}
-	err = UpdateBook(BookID, AllScore, Count)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func UpdateScoreAndRank(UserID, BookID, Score int64) error {
-	BeforeScore, err := GetBeforeBookScore(UserID, BookID)
-	if err != nil {
-		return err
-	}
-	err = CacheBookScoreSum(BookID, Score-BeforeScore) //评分更新需要先获取用户之前的评分，然后计算新的评分差值，再更新Redis中的评分总和
-	if err != nil {
-		return err
-	}
-	err = UpdateUserRate(UserID, BookID, Score)
-	if err != nil {
-		return err
-	}
-	AllScore, Count, err := GetAllScoreAndCount(BookID)
-	if err != nil {
-		return err
-	}
-	err = AddScoreRank(BookID, AllScore, Count)
-	if err != nil {
-		return err
-	}
-	err = UpdateBook(BookID, AllScore, Count)
-	if err != nil {
-		return err
-	}
-	return nil
 }

@@ -76,14 +76,23 @@ func GetRateBookByID(ID int64) (*models.RateBook, error) {
 	return &rateBook, result.Error
 }
 
+func CheckRate(p *models.UserRateBook) bool {
+	var Count int64
+	DB.Model(&models.UserRateBook{}).Where("book_id = ? AND user_id = ?", p.BookID, p.UserID).Count(&Count)
+	if Count > 0 {
+		return true
+	}
+	return false
+}
+
 func UpdateRateBook(rateBook *models.RateBook) error {
 	result := DB.Save(rateBook)
 	return result.Error
 }
 
-func GetBeforeBookScore(p *models.UserRateBook) (int64, error) {
+func GetBeforeBookScore(BookID, UserID int64) (int64, error) {
 	var Temp models.UserRateBook
-	result := DB.Where("book_id = ? AND user_id = ?", p.BookID, p.UserID).First(&Temp)
+	result := DB.Where("book_id = ? AND user_id = ?", BookID, UserID).First(&Temp)
 	return Temp.Score, result.Error
 }
 

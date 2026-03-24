@@ -102,7 +102,7 @@ func AdminDeleteBookHandle(c *gin.Context) {
 }
 
 func AdminUpdateBookHandle(c *gin.Context) {
-	var B models.Book
+	var B models.UpdateBookParam
 	if err := c.ShouldBindJSON(&B); err != nil {
 		zap.L().Error("AdminUpdateBookHandle failed", zap.Error(err))
 		HandleResponse(c, models.CodeInvalidParam)
@@ -113,9 +113,9 @@ func AdminUpdateBookHandle(c *gin.Context) {
 		HandleResponse(c, models.CodeBookNotExist)
 		return
 	}
-	err := mysql.UpdateBook(&B)
-	if err != nil {
-		zap.L().Error("AdminUpdateBookHandle failed", zap.Error(err))
+	res := logic.UpdateBook(&B)
+	if res != models.CodeSuccess {
+		zap.L().Error("AdminUpdateBookHandle failed")
 		HandleResponse(c, models.CodeServerBusy)
 		return
 	}

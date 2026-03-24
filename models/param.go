@@ -23,3 +23,14 @@ type AddBookParam struct {
 	CoverImage string   `json:"cover_image"`
 	Tags       []string `json:"tags"`
 }
+
+type UpdateBookParam struct {
+	BookID     int64    `json:"book_id"`
+	Title      string   `json:"title"`
+	Author     string   `json:"author"`
+	Publisher  string   `json:"publisher"`
+	Stock      int64    `json:"stock"`
+	Price      int64    `json:"price"` //Price和Score都用int64，前端显示时除以100,避免精度误差
+	CoverImage string   `json:"cover_image" `
+	Tags       []string `json:"tags" ` //切片用法
+}
