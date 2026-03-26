@@ -144,6 +144,16 @@
         <input id="tags" value="${tagsString}" placeholder="例如：小说，文学">
     </div>
 
+    <div class="form-item">
+        <label>简介：</label>
+        <textarea
+            id="introduction"
+            rows="4"
+            placeholder="请输入书籍简介"
+            style="width:100%; padding:8px; border:1px solid #ddd; border-radius:4px; resize:vertical;"
+        >${book.introduction || ''}</textarea>
+    </div>
+
     <button
         style="margin-top:10px; background:#22c55e;"
         onclick="updateBook()"
@@ -178,7 +188,8 @@
             price: Math.round(document.getElementById("price").value * 100),
             stock: parseInt(document.getElementById("stock").value),
             tags: tagsArray,
-            cover_image: document.getElementById("cover_image").value
+            cover_image: document.getElementById("cover_image").value,
+            introduction: document.getElementById("introduction").value.trim()
         }
         try{
             const res = await apiFetch("/admin/book/update",{

@@ -28,6 +28,7 @@
             <input type="number" id="price" placeholder="价格(单位分，如3999表示39.99)" required>
             <input type="text" id="cover_image" placeholder="封面图片URL">
             <input type="text" id="tags" placeholder="标签(用逗号分隔，例如: 小说,历史,文学)">
+            <textarea id="introduction" placeholder="书籍简介" rows="4" required></textarea>
 
             <button type="submit"><i class="ri-check-line"></i> 添加书籍</button>
         </form>
@@ -41,12 +42,13 @@
         let tagStr = document.getElementById("tags").value
         let tagArr = []
         if(tagStr.trim() !== ""){
-            tagArr = tagStr.split(",").map(t => t.trim())
+            tagArr = tagStr.split(/[,,]/).map(t => t.trim()).filter(t => t !== "")
         }
         const data = {
             title: document.getElementById("title").value,
             author: document.getElementById("author").value,
             publisher: document.getElementById("publisher").value,
+            introduction: document.getElementById("introduction").value,
             stock: parseInt(document.getElementById("stock").value),
             price: parseInt(document.getElementById("price").value),
             cover_image: document.getElementById("cover_image").value,

@@ -2,16 +2,16 @@ package mysql
 
 import (
 	"Project1_Shop/models"
-)
 
-const PageSize = 8
+	"gorm.io/gorm/clause"
+)
 
 func GetBooksPageByScore(page int64) ([]*models.Book, int64, error) {
 	var Books []*models.Book
 	var TotalPage int64
 	DB.Model(&models.Book{}).Count(&TotalPage)
-	offset := (page - 1) * PageSize
-	err := DB.Order("score DESC").Limit(PageSize).Offset(int(offset)).Find(&Books).Error //从高到低对分数排序后分页查询（加上Where还能筛选）
+	offset := (page - 1) * models.PageSize
+	err := DB.Order("score DESC").Limit(models.PageSize).Offset(int(offset)).Find(&Books).Error //从高到低对分数排序后分页查询（加上Where还能筛选）
 	return Books, TotalPage, err
 }
 
@@ -107,4 +107,65 @@ func UpdateBookScore(RB *models.RateBook) error {
 	Ans := models.WeightedCalculation(Score, Count)
 	AnsInt := int64(Ans * 100)
 	return DB.Model(&models.Book{}).Where("book_id = ?", RB.BookID).Update("score", AnsInt).Error
+}
+
+func GetTagByName(name string) (*models.Tag, error) {
+	tag := models.Tag{Name: name}
+	err := DB.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "name"}},
+		DoNothing: true,
+	}).Create(&tag).Error
+	if err != nil {
+		return nil, err
+	}
+	// 如果是已存在，tag.ID 可能为 0，需要查一次
+	if tag.ID == 0 {
+		err = DB.Where("name = ?", name).First(&tag).Error
+	}
+	return &tag, err
+}
+
+func GetTagsByNames(names []string) ([]models.Tag, error) {
+	var tags []models.Tag
+	if err := DB.Where("name IN ?", names).Find(&tags).Error; err != nil {
+		return nil, err
+	}
+	existing := make(map[string]models.Tag)
+	for _, t := range tags {
+		existing[t.Name] = t
+	}
+	var toCreate []models.Tag
+	for _, name := range names {
+		if _, ok := existing[name]; !ok {
+			toCreate = append(toCreate, models.Tag{Name: name})
+		}
+	}
+	if len(toCreate) > 0 {
+		if err := DB.Create(&toCreate).Error; err != nil {
+			return nil, err
+		}
+		tags = append(tags, toCreate...)
+	}
+	return tags, nil
+}
+
+func AddBookTag(bookID, tagID int64) error {
+	return DB.Create(&models.BookTag{
+		BookID: bookID,
+		TagID:  tagID,
+	}).Error
+}
+
+func GetTagsByBookID(bookID int64) ([]models.Tag, error) {
+	var tags []models.Tag
+	err := DB.Model(&models.Tag{}).
+		Select("tags.id, tags.name").
+		Joins("JOIN book_tags ON book_tags.tag_id = tags.id").
+		Where("book_tags.book_id = ?", bookID).
+		Scan(&tags).Error
+	return tags, err
+}
+
+func DeleteBookToTag(BookID int64) error {
+	return DB.Where("book_id = ?", BookID).Delete(&models.BookTag{}).Error
 }

@@ -66,6 +66,11 @@ func SetUp() *gin.Engine {
 			book.DELETE("/delete/:book_id", controllers.AdminDeleteBookHandle)
 			book.POST("/update", controllers.AdminUpdateBookHandle)
 		}
+		//tags := v3.Group("/tags")
+		//{
+		//	tags.POST("/add", controllers.AdminAddTagHandle)
+		//	tags.DELETE("/delete/:tag_id", controllers.AdminDeleteTagHandle)
+		//}
 		//user := v3.Group("/user")
 		//{
 		//	user.GET("/list", controllers.AdminListUserHandle)

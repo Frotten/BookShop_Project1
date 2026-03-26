@@ -82,9 +82,14 @@ func GetBeforeBookScore(userID, bookID int64) (int64, error) {
 }
 
 func UpdateUserRate(UserID, BookID, Score int64) error {
-	key := "user:rating:" + strconv.FormatInt(UserID, 10)
+	UserKey := "user:rating:" + strconv.FormatInt(UserID, 10)
+	BookKey := "book:rating:" + strconv.FormatInt(BookID, 10)
+	pipe := RDB.Pipeline()
 	field := strconv.FormatInt(BookID, 10)
-	return RDB.HSet(ctx, key, field, Score).Err()
+	pipe.HSet(ctx, UserKey, field, Score)
+	pipe.SAdd(ctx, BookKey, UserID)
+	_, err := pipe.Exec(ctx)
+	return err
 }
 
 func GetAllScoreAndCount(BookID int64) (int64, int64, error) {
@@ -109,29 +114,35 @@ func GetAllScoreAndCount(BookID int64) (int64, int64, error) {
 	return Score, Count, err
 }
 
-func AddScoreRank(BookID, AllScore, Count int64) error {
+func AddScoreRank(BookID int64, Score float64) error {
 	key := "book:rank:score"
-	Score := models.WeightedCalculation(AllScore, Count)
 	return RDB.ZAdd(ctx, key, redis.Z{
 		Score:  Score,
 		Member: BookID,
 	}).Err()
 }
 
-func SetBook(Book *models.Book, AllScore, Count int64) error {
+func SetBook(Book *models.Book, Score float64) error {
 	key := "book:" + strconv.FormatInt(Book.BookID, 10)
-	Score := models.WeightedCalculation(AllScore, Count)
-	_, err := RDB.HSet(ctx, key, map[string]interface{}{
-		"book_id":     Book.BookID,
-		"title":       Book.Title,
-		"author":      Book.Author,
-		"publisher":   Book.Publisher,
-		"stock":       Book.Stock,
-		"sales":       Book.Sales,
-		"price":       Book.Price,
-		"score":       Score,
-		"cover_image": Book.CoverImage,
-		"tags":        string(Book.Tags),
+	var tagName []string
+	for _, t := range Book.Tags {
+		tagName = append(tagName, t.Name)
+	}
+	tagJSON, err := json.Marshal(tagName)
+	if err != nil {
+		return err
+	}
+	_, err = RDB.HSet(ctx, key, map[string]interface{}{
+		"book_id":      Book.BookID,
+		"title":        Book.Title,
+		"author":       Book.Author,
+		"publisher":    Book.Publisher,
+		"introduction": Book.Introduction,
+		"stock":        Book.Stock,
+		"price":        Book.Price,
+		"score":        Score,
+		"cover_image":  Book.CoverImage,
+		"tags":         tagJSON,
 	}).Result()
 	if err != nil {
 		return err
@@ -141,29 +152,35 @@ func SetBook(Book *models.Book, AllScore, Count int64) error {
 	return nil
 }
 
-func UpdateBook(Book *models.Book, AllScore, Count int64) error {
+func UpdateBookWithOutScore(Book *models.Book) error {
 	key := "book:" + strconv.FormatInt(Book.BookID, 10)
 	ok := CheckEmpty(key)
 	if !ok {
 		return errors.New("already exist empty key")
 	}
-	Score := models.WeightedCalculation(AllScore, Count)
 	_, err := RDB.HGet(ctx, key, "score").Result()
 	if err != nil {
 		SetEmpty(key)
 		return err
 	}
+	var tagNames []string
+	for _, t := range Book.Tags {
+		tagNames = append(tagNames, t.Name)
+	}
+	tagJSON, err := json.Marshal(tagNames)
+	if err != nil {
+		return err
+	}
 	_, err = RDB.HSet(ctx, key, map[string]interface{}{
-		"book_id":     Book.BookID,
-		"title":       Book.Title,
-		"author":      Book.Author,
-		"publisher":   Book.Publisher,
-		"stock":       Book.Stock,
-		"sales":       Book.Sales,
-		"price":       Book.Price,
-		"score":       Score,
-		"cover_image": Book.CoverImage,
-		"tags":        string(Book.Tags),
+		"book_id":      Book.BookID,
+		"title":        Book.Title,
+		"author":       Book.Author,
+		"publisher":    Book.Publisher,
+		"introduction": Book.Introduction,
+		"stock":        Book.Stock,
+		"price":        Book.Price,
+		"cover_image":  Book.CoverImage,
+		"tags":         tagJSON,
 	}).Result()
 	if err != nil {
 		return err
@@ -171,6 +188,64 @@ func UpdateBook(Book *models.Book, AllScore, Count int64) error {
 	RDB.Del(ctx, GetEmpty(key))
 	RDB.Expire(ctx, key, RandTTL(BookTime))
 	return nil
+}
+
+func UpdateBook(Book *models.Book, AnsScore float64) error {
+	key := "book:" + strconv.FormatInt(Book.BookID, 10)
+	ok := CheckEmpty(key)
+	if !ok {
+		return errors.New("already exist empty key")
+	}
+	_, err := RDB.HGet(ctx, key, "score").Result()
+	if err != nil {
+		SetEmpty(key)
+		return err
+	}
+	var tagNames []string
+	for _, t := range Book.Tags {
+		tagNames = append(tagNames, t.Name)
+	}
+	tagsJSON, err := json.Marshal(tagNames)
+	if err != nil {
+		return err
+	}
+	_, err = RDB.HSet(ctx, key, map[string]interface{}{
+		"book_id":      Book.BookID,
+		"title":        Book.Title,
+		"author":       Book.Author,
+		"publisher":    Book.Publisher,
+		"introduction": Book.Introduction,
+		"stock":        Book.Stock,
+		"price":        Book.Price,
+		"score":        AnsScore,
+		"cover_image":  Book.CoverImage,
+		"tags":         tagsJSON,
+	}).Result()
+	if err != nil {
+		return err
+	}
+	RDB.Del(ctx, GetEmpty(key))
+	RDB.Expire(ctx, key, RandTTL(BookTime))
+	return nil
+}
+
+func DeleteBook(BookID int64) error {
+	BookKey := "book:rating:" + strconv.FormatInt(BookID, 64)
+	userIDs, err := RDB.SMembers(ctx, BookKey).Result()
+	if err != nil {
+		return err
+	}
+	pipe := RDB.Pipeline()
+	pipe.Del(ctx, "book:"+strconv.FormatInt(BookID, 10))
+	pipe.Del(ctx, "book:score:"+strconv.FormatInt(BookID, 10))
+	pipe.Del(ctx, "book:score_count:", strconv.FormatInt(BookID, 10))
+	pipe.Del(ctx, "book:summary:", strconv.FormatInt(BookID, 10))
+	for _, id := range userIDs {
+		pipe.HDel(ctx, "user:rating:"+id, strconv.FormatInt(BookID, 64))
+	}
+	pipe.Del(ctx, BookKey)
+	_, err = pipe.Exec(ctx)
+	return err
 }
 
 func GetScoreList() ([]redis.Z, error) {
@@ -182,7 +257,7 @@ func GetScoreList() ([]redis.Z, error) {
 	return results, nil
 }
 
-func GetBookSummaryByBookID(BookID int64) (*models.ListBook, error) {
+func GetBookSummaryByBookID(BookID int64, Score float64) (*models.ListBook, error) {
 	key := "book:summary:" + strconv.FormatInt(BookID, 10)
 	ok := CheckEmpty(key)
 	if !ok {
@@ -198,22 +273,13 @@ func GetBookSummaryByBookID(BookID int64) (*models.ListBook, error) {
 			BookID: -1,
 		}, err
 	}
-	Sales, err := strconv.ParseInt(data["sales"], 10, 64)
-	if err != nil {
-		return nil, err
-	}
-	Score, err := strconv.ParseFloat(data["score"], 64)
-	if err != nil {
-		return nil, err
-	}
 	var tags []string
 	err = json.Unmarshal([]byte(data["tags"]), &tags)
 	return &models.ListBook{
 		BookID: BookID,
 		Title:  data["title"],
-		Sales:  Sales,
-		Score:  Score,
 		Tags:   tags,
+		Score:  Score,
 	}, nil
 }
 
@@ -227,7 +293,6 @@ func SetBookSummary(List *models.ListBook) error {
 	_, err = RDB.HSet(ctx, key, map[string]interface{}{
 		"book_id": List.BookID,
 		"title":   List.Title,
-		"score":   List.Score,
 		"sales":   List.Sales,
 		"tags":    tagsJson,
 	}).Result()
@@ -249,11 +314,21 @@ func GetBookByBookID(BookID int64) (*models.BookCache, error) {
 	}
 	Sales, err := strconv.ParseInt(data["sales"], 10, 64)
 	if err != nil {
-		return nil, err
+		var numErr *strconv.NumError
+		if errors.As(err, &numErr) && errors.Is(numErr.Err, strconv.ErrSyntax) {
+			Sales = 0
+		} else {
+			return nil, err
+		}
 	}
 	Stock, err := strconv.ParseInt(data["stock"], 10, 64)
 	if err != nil {
-		return nil, err
+		var numErr *strconv.NumError
+		if errors.As(err, &numErr) && errors.Is(numErr.Err, strconv.ErrSyntax) {
+			Stock = 0
+		} else {
+			return nil, err
+		}
 	}
 	Price, err := strconv.ParseFloat(data["price"], 64)
 	if err != nil {
@@ -266,15 +341,40 @@ func GetBookByBookID(BookID int64) (*models.BookCache, error) {
 	var tags []string
 	err = json.Unmarshal([]byte(data["tags"]), &tags)
 	return &models.BookCache{
-		BookID:     BookID,
-		Title:      data["title"],
-		Sales:      Sales,
-		Score:      Score,
-		Author:     data["author"],
-		Publisher:  data["publisher"],
-		Stock:      Stock,
-		Price:      Price,
-		CoverImage: data["cover_image"],
-		Tags:       tags,
+		BookID:       BookID,
+		Title:        data["title"],
+		Sales:        Sales,
+		Score:        Score,
+		Author:       data["author"],
+		Publisher:    data["publisher"],
+		Stock:        Stock,
+		Price:        Price,
+		CoverImage:   data["cover_image"],
+		Tags:         tags,
+		Introduction: data["introduction"],
 	}, nil
+}
+
+func GetBooksPageByScore(page int64) ([]*models.BookCache, int64, error) {
+	key := "book:rank:score"
+	start := (page - 1) * models.PageSize
+	end := start + models.PageSize - 1
+	ids, err := RDB.ZRevRangeWithScores(ctx, key, start, end).Result()
+	if err != nil {
+		return nil, 0, err
+	}
+	var books []*models.BookCache
+	for _, idStr := range ids {
+		id, _ := strconv.ParseInt(idStr.Member.(string), 10, 64)
+		book, err := GetBookByBookID(id)
+		if err != nil || book.BookID == -1 {
+			continue
+		}
+		books = append(books, book)
+	}
+	total, err := RDB.ZCard(ctx, key).Result()
+	if err != nil {
+		return nil, 0, err
+	}
+	return books, total, nil
 }

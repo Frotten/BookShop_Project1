@@ -198,8 +198,16 @@
                         </div>
                     </div>
                     ${tagsHtml ? `<div class="tag-list">${tagsHtml}</div>` : ''}
+                    ${book.introduction ? `
+                        <div class="introduction-section" style="margin:1.5rem 0; padding:1rem; background:#f8fafc; border-radius:8px; border-left:4px solid var(--primary);">
+                            <h3 style="margin-bottom:0.5rem; color:#1e293b; font-size:1.1rem;">
+                                <i class="ri-article-line" style="color:var(--primary);"></i> 书籍简介
+                            </h3>
+                            <p style="color:#64748b; line-height:1.8; white-space:pre-wrap;">${escapeHtml(book.introduction)}</p>
+                        </div>
+                    ` : ''}
                     <div class="price-large">
-                        ￥${priceYuan} <small>￥${priceYuan}</small>
+                        ￥${priceYuan} 
                     </div>
                     <div class="action-buttons">
                         <button class="add-to-cart-detail" data-id="${book.book_id}">

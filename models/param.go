@@ -15,22 +15,24 @@ type ParamLogin struct {
 }
 
 type AddBookParam struct {
-	Title      string   `json:"title" binding:"required"`
-	Author     string   `json:"author" binding:"required"`
-	Publisher  string   `json:"publisher" binding:"required"`
-	Stock      int64    `json:"stock" binding:"required"`
-	Price      int64    `json:"price" binding:"required"`
-	CoverImage string   `json:"cover_image"`
-	Tags       []string `json:"tags"`
+	Title        string   `json:"title" binding:"required"`
+	Author       string   `json:"author" binding:"required"`
+	Publisher    string   `json:"publisher" binding:"required"`
+	Introduction string   `json:"introduction"`
+	Stock        int64    `json:"stock" binding:"required"`
+	Price        int64    `json:"price" binding:"required"`
+	CoverImage   string   `json:"cover_image"`
+	Tags         []string `json:"tags"`
 }
 
 type UpdateBookParam struct {
-	BookID     int64    `json:"book_id"`
-	Title      string   `json:"title"`
-	Author     string   `json:"author"`
-	Publisher  string   `json:"publisher"`
-	Stock      int64    `json:"stock"`
-	Price      int64    `json:"price"` //Price和Score都用int64，前端显示时除以100,避免精度误差
-	CoverImage string   `json:"cover_image" `
-	Tags       []string `json:"tags" ` //切片用法
+	BookID       int64    `json:"book_id"`
+	Title        string   `json:"title"`
+	Author       string   `json:"author"`
+	Publisher    string   `json:"publisher"`
+	Introduction string   `json:"introduction"`
+	Stock        int64    `json:"stock"`
+	Price        int64    `json:"price"` //Price和Score都用int64，前端显示时除以100,避免精度误差
+	CoverImage   string   `json:"cover_image" `
+	Tags         []string `json:"tags" ` //切片用法
 }

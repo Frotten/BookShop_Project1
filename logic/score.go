@@ -4,6 +4,7 @@ import (
 	"Project1_Shop/dao/mysql"
 	"Project1_Shop/dao/redis"
 	"Project1_Shop/models"
+	"math"
 	"strconv"
 
 	"go.uber.org/zap"
@@ -26,7 +27,8 @@ func NewScoreAndRank(UserID, BookID, Score int64) error {
 	if err != nil {
 		return err
 	}
-	err = redis.AddScoreRank(BookID, AllScore, Count)
+	AnsScore := models.WeightedCalculation(AllScore, Count)
+	err = redis.AddScoreRank(BookID, AnsScore)
 	if err != nil {
 		return err
 	}
@@ -34,7 +36,7 @@ func NewScoreAndRank(UserID, BookID, Score int64) error {
 	if err != nil {
 		return err
 	}
-	err = redis.SetBook(Book, AllScore, Count)
+	err = redis.SetBook(Book, AnsScore*100)
 	if err != nil {
 		return err
 	}
@@ -58,7 +60,8 @@ func UpdateScoreAndRank(UserID, BookID, Score int64) error {
 	if err != nil {
 		return err
 	}
-	err = redis.AddScoreRank(BookID, AllScore, Count)
+	AnsScore := models.WeightedCalculation(AllScore, Count)
+	err = redis.AddScoreRank(BookID, AnsScore)
 	if err != nil {
 		return err
 	}
@@ -66,7 +69,7 @@ func UpdateScoreAndRank(UserID, BookID, Score int64) error {
 	if err != nil {
 		return err
 	}
-	err = redis.UpdateBook(Book, AllScore, Count)
+	err = redis.UpdateBook(Book, AnsScore*100)
 	if err != nil {
 		return err
 	}
@@ -148,6 +151,7 @@ func RateBook(p *models.UserRateBook) models.ResCode {
 	if !ok {
 		ok = mysql.CheckRate(p)
 		if ok {
+			redis.UpdateUserRate(p.UserID, p.BookID, p.Score) //获取用户ID，书籍ID，上次评分
 			p.Op = models.RateOpNew
 			return RateUpdateBook(p)
 		}
@@ -160,8 +164,22 @@ func RateBook(p *models.UserRateBook) models.ResCode {
 
 func GetTopScoreList() ([]*models.ListBook, models.ResCode) {
 	results, err := redis.GetScoreList()
-	if err != nil {
-		return nil, models.CodeServerBusy
+	if err != nil { //查找失败，默认原排行榜丢失，从MySQL中重新获取排行榜
+		Books, _, err := mysql.GetBooksPageByScore(1)
+		if err != nil {
+			return nil, models.CodeServerBusy
+		}
+		var AnsList []*models.ListBook
+		for _, Book := range Books {
+			T := BookListToCache(Book)
+			_ = redis.SetBookSummary(T)
+			err = redis.AddScoreRank(Book.BookID, float64(Book.Score)/100)
+			if err != nil {
+				continue
+			}
+			AnsList = append(AnsList, T)
+		}
+		return AnsList, models.CodeSuccess
 	}
 	var Ans []*models.ListBook
 	for _, z := range results {
@@ -180,7 +198,8 @@ func GetTopScoreList() ([]*models.ListBook, models.ResCode) {
 			zap.L().Error("unexpected member type", zap.Any("value", v))
 			continue
 		}
-		T, err := redis.GetBookSummaryByBookID(BookID)
+		Score := math.Trunc(z.Score*100) / 100
+		T, err := redis.GetBookSummaryByBookID(BookID, Score)
 		if err != nil {
 			continue
 		}
@@ -191,10 +210,7 @@ func GetTopScoreList() ([]*models.ListBook, models.ResCode) {
 				if err != nil {
 					return nil, err
 				}
-				T, err := BookListToCache(Book)
-				if err != nil {
-					return nil, err
-				}
+				T := BookListToCache(Book)
 				_ = redis.SetBookSummary(T)
 				return T, nil
 			})

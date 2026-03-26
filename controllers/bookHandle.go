@@ -14,35 +14,25 @@ import (
 
 func ScoreBookHandle(c *gin.Context) {
 	PageString := c.Param("page")
-	Page, err := strconv.ParseInt(PageString, 10, 64)
-	if err != nil || Page <= 0 {
+	PageInt, err := strconv.ParseInt(PageString, 10, 64)
+	if err != nil || PageInt <= 0 {
 		HandleResponse(c, models.CodeInvalidParam)
 		return
 	}
-	Books, total, err := mysql.GetBooksPageByScore(Page)
-	Pages := &models.Page{
-		Page:  Page,
-		Total: total,
-		Data:  Books,
-	}
+	Pages, err := logic.GetPageBooks(PageInt)
 	if err != nil {
-		HandleResponse(c, models.CodeServerBusy)
+		HandleResponse(c, models.CodeInvalidParam)
 		return
 	}
 	HandleSuccess(c, Pages)
 }
 
 func GetBooksJSON(c *gin.Context) {
-	Page := int64(1)
-	Books, total, err := mysql.GetBooksPageByScore(Page)
+	PageInt := int64(1)
+	Pages, err := logic.GetPageBooks(PageInt)
 	if err != nil {
-		HandleResponse(c, models.CodeServerBusy)
+		HandleResponse(c, models.CodeInvalidParam)
 		return
-	}
-	Pages := &models.Page{
-		Page:  Page,
-		Total: total,
-		Data:  Books,
 	}
 	HandleSuccess(c, Pages)
 }
