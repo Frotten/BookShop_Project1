@@ -30,6 +30,7 @@ func AutoMigration() {
 		&models.Admin{},
 		&models.BookTag{},
 		&models.RateBook{},
+		&models.CommentBook{},
 		&models.UserRateBook{},
 	)
 }

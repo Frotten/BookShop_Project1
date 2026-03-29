@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"errors"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -143,4 +144,65 @@ func TopScoreHandle(c *gin.Context) {
 		return
 	}
 	HandleSuccess(c, ListBook)
+}
+
+func CommentHandle(c *gin.Context) {
+	var CP models.CommentParam
+	if err := c.ShouldBindJSON(&CP); err != nil {
+		zap.L().Error("CommentHandle failed", zap.Error(err))
+		HandleResponse(c, models.CodeInvalidParam)
+		return
+	}
+	UserID, ok := c.Get("userID")
+	if !ok || UserID == nil {
+		zap.L().Error("RateBookHandle failed: UserID not found in context")
+		HandleResponse(c, models.CodeServerBusy)
+		return
+	}
+	Comment := &models.CommentBook{
+		UserID:      UserID.(int64),
+		BookID:      CP.BookID,
+		Comment:     CP.Comment,
+		ParentID:    CP.ParentID,
+		RootID:      CP.RootID,
+		LikeCount:   0,
+		CommentTime: time.Now().Format(models.TimeParseLayout),
+	}
+	res := logic.CommentBook(Comment)
+	if res != models.CodeSuccess {
+		zap.L().Error("CommentHandle failed")
+		HandleResponse(c, res)
+		return
+	}
+	HandleSuccess(c, nil)
+}
+
+func CommentsHandle(c *gin.Context) {
+	bookIDStr := c.Query("book_id")
+	bookID, err := strconv.ParseInt(bookIDStr, 10, 64)
+	if err != nil || bookID <= 0 {
+		HandleResponse(c, models.CodeInvalidParam)
+		return
+	}
+	list, res := logic.GetCommentsByBookID(bookID)
+	if res != models.CodeSuccess {
+		HandleResponse(c, res)
+		return
+	}
+	HandleSuccess(c, list)
+}
+
+func CommentLikeHandle(c *gin.Context) {
+	var p models.CommentLikeParam
+	if err := c.ShouldBindJSON(&p); err != nil {
+		zap.L().Error("CommentLikeHandle failed", zap.Error(err))
+		HandleResponse(c, models.CodeInvalidParam)
+		return
+	}
+	res := logic.LikeComment(p.CommentID)
+	if res != models.CodeSuccess {
+		HandleResponse(c, res)
+		return
+	}
+	HandleSuccess(c, nil)
 }

@@ -107,12 +107,10 @@ function addToCart(bookId) {
     const token = getAccessToken();
     const headers = { "Content-Type": "application/json" };
     if (token) headers["Authorization"] = "Bearer " + token;
-
-    fetch("/api/cart", {
+    apiFetch("/api/cart", {
         method: "POST",
-        headers: headers,
         credentials: "include",
-        body: JSON.stringify({ book_id: bookId })
+        body: JSON.stringify({book_id: bookId})
     })
         .then(response => response.json())
         .then(data => {

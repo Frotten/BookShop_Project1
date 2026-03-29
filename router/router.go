@@ -30,9 +30,12 @@ func SetUp() *gin.Engine {
 		v1.GET("/getBookDetail/:book_id", controllers.GetBookParamHandle)
 		//v1.GET("/topSale", controllers.TopSaleHandle)
 		v1.GET("/topScore", controllers.TopScoreHandle)
+		v1.GET("/comments", controllers.CommentsHandle)
 		Login := v1.Use(middlewares.JWTAuthMiddleware())
 		{
 			Login.POST("/rateBook", controllers.RateBookHandle)
+			Login.POST("/comment", controllers.CommentHandle)
+			Login.POST("/comment/like", controllers.CommentLikeHandle)
 		}
 	}
 	v2 := r.Group("/page")

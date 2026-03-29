@@ -36,3 +36,15 @@ type UpdateBookParam struct {
 	CoverImage   string   `json:"cover_image" `
 	Tags         []string `json:"tags" ` //切片用法
 }
+
+type CommentParam struct {
+	BookID   int64  `json:"book_id"`
+	ParentID int64  `json:"parent_id"`
+	RootID   int64  `json:"root_id"`
+	Comment  string `json:"comment"`
+}
+
+// 点赞入参：前端只会提交 comment_id
+type CommentLikeParam struct {
+	CommentID int64 `json:"comment_id" binding:"required"`
+}

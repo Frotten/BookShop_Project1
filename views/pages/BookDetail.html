@@ -5,15 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>书籍详情 · 网络书城</title>
     <!-- 公共样式 -->
-    <link rel="stylesheet" href="/static/css/BookDetail.css"></link>
     <link rel="stylesheet" href="/static/css/CommonStyle.css">
+    <link rel="stylesheet" href="/static/css/BookDetail.css">
     <!-- 图标库 -->
     <link href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css" rel="stylesheet">
-    <!-- 详情页专用样式 -->
+    <!-- 额外补充评论区域专用样式（与现有风格统一） -->
 </head>
 <body>
-
-<!-- ========== 导航栏（标题可点击返回主页） ========== -->
+<!-- ========== 导航栏 ========== -->
 <header class="navbar">
     <h1>
         <a href="/page/HomePage" style="color: inherit; text-decoration: none;">
@@ -32,10 +31,8 @@
     </div>
 </header>
 
-<!-- ========== 主要内容 ========== -->
 <div class="container">
     <div id="book-detail-container">
-        <!-- 加载提示，会被动态替换 -->
         <div class="loading" style="text-align:center; padding:3rem;">
             <i class="ri-loader-4-line ri-spin" style="font-size:2.5rem; color:var(--primary);"></i>
             <p>加载书籍信息...</p>
@@ -43,12 +40,17 @@
     </div>
 </div>
 
-<!-- 引入公共脚本 (包含 token 管理、apiFetch、logout 等) -->
 <script src="/static/js/CommonScript.js"></script>
-<!-- 内联脚本：详情页专属逻辑 -->
 <script>
     (function() {
-        // ---------- 工具函数 ----------
+        // ---------- 全局变量 ----------
+        let currentBookId = null;
+        let currentBook = null;
+        let selectedRating = 0;
+        let allComments = [];       // 存储从后端获取的评论列表（平铺）
+        let currentUserId = null;   // 当前登录用户ID（可选，用于判断是否自己的评论）
+
+        // ---------- 工具函数（复用已有的 escapeHtml）----------
         function escapeHtml(unsafe) {
             if (!unsafe) return '';
             return String(unsafe)
@@ -59,19 +61,26 @@
                 .replace(/'/g, "&#039;");
         }
 
-        // 当前书籍ID和详情数据
-        let currentBookId = null;
-        let currentBook = null;
-        // 当前选中的评分 (1-5)
-        let selectedRating = 0;
+        // 生成只读星星
+        function generateReadonlyStars(score) {
+            const floatScore = parseFloat(score) || 0;
+            const fullStars = Math.floor(floatScore);
+            const halfStar = (floatScore - fullStars) >= 0.5 ? 1 : 0;
+            const emptyStars = 5 - fullStars - halfStar;
+            let html = '';
+            for (let i = 0; i < fullStars; i++) html += '<i class="ri-star-fill" style="color:#fbbf24;"></i>';
+            if (halfStar) html += '<i class="ri-star-half-line" style="color:#fbbf24;"></i>';
+            for (let i = 0; i < emptyStars; i++) html += '<i class="ri-star-line" style="color:#d1d5db;"></i>';
+            return html;
+        }
 
-        // ---------- 获取URL参数 ----------
+        // 获取URL参数
         function getQueryParam(name) {
             const params = new URLSearchParams(window.location.search);
             return params.get(name);
         }
 
-        // ---------- 确保已登录 (若未登录尝试刷新，否则跳转) ----------
+        // 确保已登录
         async function ensureLoggedIn() {
             let token = getAccessToken();
             if (!token || isAccessTokenExpired(token)) {
@@ -83,296 +92,422 @@
                     return false;
                 }
             }
+            // 获取当前用户信息（可选）
+            await fetchCurrentUser();
             return true;
         }
 
-        // ---------- 初始化页面 ----------
-        document.addEventListener('DOMContentLoaded', async function() {
-            // 1. 更新导航栏登录状态
-            const loggedIn = await checkAuth();
-            const authArea = document.getElementById('auth-area');
-            const guestArea = document.getElementById('guest-area');
-            if (loggedIn) {
-                authArea.style.display = 'flex';
-                guestArea.style.display = 'none';
-            } else {
-                authArea.style.display = 'none';
-                guestArea.style.display = 'flex';
-            }
+        async function fetchCurrentUser() {
+            try {
+                const res = await apiFetch('/api/user/info', { method: 'GET' });
+                const data = await res.json();
+                if (data.code === 1000 && data.data) {
+                    currentUserId = data.data.user_id;
+                }
+            } catch(e) {}
+        }
 
-            // 2. 获取book_id
-            const bookId = getQueryParam('book_id');
-            if (!bookId) {
-                document.getElementById('book-detail-container').innerHTML = `
-                    <div class="no-book">
-                        <i class="ri-error-warning-line" style="font-size:3rem; color:#f59e0b;"></i>
-                        <p>缺少书籍ID，无法显示详情</p>
-                        <a href="/page/HomePage" style="display:inline-block; margin-top:1rem;">返回首页</a>
-                    </div>
-                `;
-                return;
-            }
-            currentBookId = bookId;
-            await fetchBookDetail(bookId);
-        });
-
-        // ---------- 获取书籍详情 ----------
+        // ---------- 书籍详情 ----------
         async function fetchBookDetail(bookId) {
             const container = document.getElementById('book-detail-container');
             try {
-                // 优先调用专用详情接口 (请根据实际后端调整)
                 const res = await apiFetch(`/api/getBookDetail/${bookId}`, { method: 'GET' });
                 const result = await res.json();
-
                 if (result.code === 1000 && result.data) {
                     currentBook = result.data;
                     renderBookDetail(result.data);
+                    await fetchComments(bookId);   // 加载评论列表
                 } else {
-                    // 备用：从图书列表接口获取（兼容旧版）
-                    console.warn('专用详情接口失败，尝试从列表获取');
-                    const listRes = await apiFetch('/api/getBooksJSON', { method: 'GET' });
-                    const listData = await listRes.json();
-                    if (listData.code === 1000) {
-                        const books = listData.data.data || [];
-                        const found = books.find(b => b.book_id == bookId);
-                        if (found) {
-                            currentBook = found;
-                            renderBookDetail(found);
-                        } else {
-                            throw new Error('未找到该书籍');
-                        }
-                    } else {
-                        throw new Error(listData.msg || '获取书籍失败');
-                    }
+                    throw new Error(result.msg || '获取书籍失败');
                 }
             } catch (err) {
                 console.error(err);
-                container.innerHTML = `
-                    <div class="no-book">
-                        <i class="ri-cloud-off-line" style="font-size:3rem; color:#ef4444;"></i>
-                        <p>加载失败：${escapeHtml(err.message)}</p>
-                        <a href="/page/HomePage" style="display:inline-block; margin-top:1rem;">返回首页</a>
-                    </div>
-                `;
+                container.innerHTML = `<div class="no-book"><i class="ri-cloud-off-line"></i><p>加载失败：${escapeHtml(err.message)}</p><a href="/page/HomePage">返回首页</a></div>`;
             }
         }
 
-        // ---------- 渲染详情页 ----------
+        // 获取评论列表（后端需返回符合 CommentBook 结构的数组，并附带 user_name, user_avatar）
+        async function fetchComments(bookId) {
+            try {
+                const res = await apiFetch(`/api/comments?book_id=${bookId}`, { method: 'GET' });
+                const data = await res.json();
+                if (data.code === 1000 && Array.isArray(data.data)) {
+                    allComments = data.data;
+                } else {
+                    allComments = [];
+                }
+                renderComments(allComments);
+            } catch(e) {
+                console.error(e);
+                allComments = [];
+                renderComments([]);
+            }
+        }
+
+        // 构建评论树 (一级评论 parent_id=0，二级根据 parent_id 关联)
+        function buildCommentTree(list) {
+            const map = new Map();
+            const roots = [];
+            // 先建 map
+            list.forEach(c => {
+                if (c.status !== 1) return;
+                map.set(c.comment_id, { ...c, replies: [] });
+            });
+            list.forEach(c => {
+                if (c.status !== 1) return;
+                const node = map.get(c.comment_id);
+                if (c.parent_id === 0) {
+                    roots.push(node);
+                } else {
+                    const parent = map.get(c.parent_id);
+                    if (parent) {
+                        parent.replies.push(node);
+                    } else {
+                        roots.push(node); // 防御
+                    }
+                }
+            });
+            return roots.sort((a,b)=>b.comment_id - a.comment_id);
+        }
+
+        // 渲染评论列表（递归）
+        function renderComments(comments) {
+            const container = document.getElementById('comments-list-container');
+            if (!container) return;
+            const tree = buildCommentTree(comments);
+            if (tree.length === 0) {
+                container.innerHTML = '<div class="empty-comments"><i class="ri-chat-1-line"></i> 暂无评论，来说两句吧~</div>';
+                return;
+            }
+            let html = '';
+            tree.forEach(root => {
+                html += renderCommentItem(root);
+            });
+            container.innerHTML = html;
+            bindCommentEvents();  // 绑定动态事件
+        }
+
+        // 渲染单条评论及其子回复
+        function renderCommentItem(comment) {
+            const isDeleted = comment.status === 2;
+            const isPending = comment.status === 3;
+            let statusBadge = '';
+            if (isDeleted) statusBadge = '<span class="status-badge status-deleted">[已删除]</span>';
+            else if (isPending) statusBadge = '<span class="status-badge">审核中</span>';
+
+            const avatar = comment.user_avatar || '/static/default-avatar.png';
+            const userName = escapeHtml(comment.user_name || '匿名用户');
+            const time = new Date(comment.comment_time).toLocaleString();
+            const content = isDeleted ? '该评论已被删除' : escapeHtml(comment.comment);
+            const contentClass = isDeleted ? 'comment-content status-deleted' : 'comment-content';
+            const likeCount = comment.like_count || 0;
+            const replyCount = comment.reply_count || 0;
+
+            let repliesHtml = '';
+            if (comment.replies && comment.replies.length) {
+                repliesHtml = `<div class="reply-list">`;
+                comment.replies.forEach(reply => {
+                    repliesHtml += renderCommentItem(reply);
+                });
+                repliesHtml += `</div>`;
+            }
+
+            return `
+            <div class="comment-item" data-comment-id="${comment.comment_id}" data-root-id="${comment.root_id || comment.comment_id}" data-parent-id="${comment.parent_id}">
+                <div style="display:flex;">
+                    <div class="comment-avatar">
+                        <img src="${avatar}" onerror="this.src='/static/default-avatar.png'">
+                    </div>
+                    <div class="comment-main">
+                        <div>
+                            <span class="comment-user">${userName}</span>
+                            ${statusBadge}
+                            <span class="comment-time">${time}</span>
+                        </div>
+                        <div class="${contentClass}">${content}</div>
+                        <div class="comment-actions">
+                            <span class="action-like" data-id="${comment.comment_id}">
+                                <i class="ri-thumb-up-line"></i> <span class="like-count">${likeCount}</span>
+                            </span>
+                            <span class="action-reply" data-id="${comment.comment_id}">
+                                <i class="ri-reply-line"></i> 回复 <span class="reply-count">${replyCount}</span>
+                            </span>
+                        </div>
+                        <div class="reply-input-box" data-reply-box="${comment.comment_id}">
+                            <textarea rows="2" placeholder="写下你的回复..."></textarea>
+                            <div class="reply-actions">
+                                <button class="small-btn cancel-reply">取消</button>
+                                <button class="small-btn primary submit-reply" data-id="${comment.comment_id}">发表回复</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                ${repliesHtml}
+            </div>
+        `;
+        }
+
+        // 绑定评论区域的动态事件（点赞、回复、取消回复、提交回复）
+        function bindCommentEvents() {
+            const container = document.getElementById('comments-list-container');
+            container.onclick = async function(e) {
+                const likeBtn = e.target.closest('.action-like');
+                const replyBtn = e.target.closest('.action-reply');
+                const submitBtn = e.target.closest('.submit-reply');
+                const cancelBtn = e.target.closest('.cancel-reply');
+                // 👍 点赞
+                if (likeBtn) {
+                    const id = likeBtn.dataset.id;
+                    await likeComment(id, likeBtn);
+                }
+                // 💬 回复按钮
+                if (replyBtn) {
+                    const id = replyBtn.dataset.id;
+                    toggleReplyBox(id);
+                }
+                // ❌ 取消回复
+                if (cancelBtn) {
+                    cancelBtn.closest('.reply-input-box').classList.remove('active');
+                }
+                // 📤 提交回复
+                if (submitBtn) {
+                    const id = submitBtn.dataset.id;
+                    await submitReply(id);
+                }
+            };
+        }
+
+        async function likeComment(id, el) {
+            if (!await ensureLoggedIn()) return;
+
+            const res = await apiFetch('/api/comment/like', {
+                method:'POST',
+                body:JSON.stringify({comment_id:+id})
+            });
+            const data = await res.json();
+            if (data.code === 1000) {
+                const span = el.querySelector('.like-count');
+                span.innerText = +span.innerText + 1;
+            }
+        }
+
+        function replyClickHandler(e) {
+            e.stopPropagation();
+            const commentId = e.currentTarget.dataset.id;
+            const replyBox = document.querySelector(`.reply-input-box[data-reply-box="${commentId}"]`);
+            if (replyBox) {
+                // 关闭其他打开的回复框
+                document.querySelectorAll('.reply-input-box').forEach(box => {
+                    if (box !== replyBox) box.classList.remove('active');
+                });
+                replyBox.classList.toggle('active');
+                // 自动聚焦
+                const textarea = replyBox.querySelector('textarea');
+                if (textarea && replyBox.classList.contains('active')) textarea.focus();
+            }
+        }
+
+        function cancelReplyHandler(e) {
+            const box = e.currentTarget.closest('.reply-input-box');
+            if (box) {
+                box.classList.remove('active');
+                const textarea = box.querySelector('textarea');
+                if (textarea) textarea.value = '';
+            }
+        }
+
+        function toggleReplyBox(commentId) {
+            const replyBox = document.querySelector(`.reply-input-box[data-reply-box="${commentId}"]`);
+            if (replyBox) {
+                // 关闭其他打开的回复框
+                document.querySelectorAll('.reply-input-box').forEach(box => {
+                    if (box !== replyBox) box.classList.remove('active');
+                });
+                replyBox.classList.toggle('active');
+                // 自动聚焦
+                const textarea = replyBox.querySelector('textarea');
+                if (textarea && replyBox.classList.contains('active')) textarea.focus();
+            }
+        }
+
+        async function submitReply(commentID) {
+            const box = document.querySelector(`[data-reply-box="${commentID}"]`);
+            const content = box.querySelector('textarea').value.trim();
+            if (!content) return alert('不能为空');
+            const target = allComments.find(c => c.comment_id == commentID);
+            const rootID = target.root_id === 0 ? target.comment_id : target.root_id;
+            await apiFetch('/api/comment', {
+                method:'POST',
+                body:JSON.stringify({
+                    book_id:+currentBookId,
+                    comment:content,
+                    parent_id:+commentID,
+                    root_id:rootID
+                })
+            });
+            await fetchComments(currentBookId);
+        }
+
+        // 发表一级评论
+        async function submitNewComment() {
+            const content = document.getElementById('new-comment-text').value.trim();
+            if (!content) {
+                alert('评论内容不能为空');
+                return;
+            }
+            const logged = await ensureLoggedIn();
+            if (!logged) return;
+            try {
+                const res = await apiFetch('/api/comment', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        book_id: parseInt(currentBookId),
+                        comment: content,
+                        parent_id: 0,
+                        root_id: 0
+                    })
+                });
+                const data = await res.json();
+                if (data.code === 1000) {
+                    document.getElementById('new-comment-text').value = '';
+                    await fetchComments(currentBookId);
+                } else {
+                    alert(data.msg || '发表失败');
+                }
+            } catch(err) {
+                console.error(err);
+                alert('网络错误');
+            }
+        }
+
+        // ---------- 渲染书籍详情（保留原有评分和购物车，新增评论区域）----------
         function renderBookDetail(book) {
             const container = document.getElementById('book-detail-container');
-
             const priceYuan = (book.price / 100).toFixed(2);
             const scoreAvg = (book.score / 100).toFixed(2);
+            const coverSrc = book.cover_image ? (book.cover_image.startsWith('http') ? book.cover_image : '/static/covers/' + book.cover_image) : 'https://placehold.co/300x450/e2e8f0/1f2937?text=No+Cover';
 
-            const coverSrc = book.cover_image
-                ? (book.cover_image.startsWith('http') ? book.cover_image : '/static/covers/' + book.cover_image)
-                : 'https://placehold.co/300x450/e2e8f0/1f2937?text=No+Cover';
-
-            // 解析tags
             let tags = [];
             if (book.tags) {
-                if (Array.isArray(book.tags)) {
-                    tags = book.tags;
-                } else if (typeof book.tags === 'string') {
-                    try { tags = JSON.parse(book.tags); } catch (e) { tags = []; }
-                }
+                if (Array.isArray(book.tags)) tags = book.tags;
+                else if (typeof book.tags === 'string') try { tags = JSON.parse(book.tags); } catch(e) {}
             }
-            const tagsHtml = tags.map(tag =>
-                `<span class="tag"><i class="ri-price-tag-3-line"></i>${escapeHtml(tag)}</span>`
-            ).join('');
-
-            // 只读星星（根据平均分）
+            const tagsHtml = tags.map(tag => `<span class="tag"><i class="ri-price-tag-3-line"></i>${escapeHtml(tag)}</span>`).join('');
             const readonlyStars = generateReadonlyStars(scoreAvg);
 
-            // 右侧信息
             const infoHtml = `
-                <div class="detail-info">
-                    <h2><i class="ri-book-2-line"></i> ${escapeHtml(book.title)}</h2>
-                    <div class="meta-grid">
-                        <div class="meta-item"><i class="ri-user-pen-line"></i> <strong>作者：</strong>${escapeHtml(book.author)}</div>
-                        <div class="meta-item"><i class="ri-building-line"></i> <strong>出版社：</strong>${escapeHtml(book.publisher)}</div>
-                        <div class="meta-item"><i class="ri-stack-line"></i> <strong>库存：</strong>${book.stock} 件</div>
-                        <div class="meta-item"><i class="ri-bar-chart-grouped-line"></i> <strong>销量：</strong>${book.sales} 件</div>
-                        <div class="meta-item"><i class="ri-star-s-line"></i> <strong>评分：</strong>${scoreAvg} / 5.0
-                            <span class="stars-readonly">${readonlyStars}</span>
-                        </div>
-                    </div>
-                    ${tagsHtml ? `<div class="tag-list">${tagsHtml}</div>` : ''}
-                    ${book.introduction ? `
-                        <div class="introduction-section" style="margin:1.5rem 0; padding:1rem; background:#f8fafc; border-radius:8px; border-left:4px solid var(--primary);">
-                            <h3 style="margin-bottom:0.5rem; color:#1e293b; font-size:1.1rem;">
-                                <i class="ri-article-line" style="color:var(--primary);"></i> 书籍简介
-                            </h3>
-                            <p style="color:#64748b; line-height:1.8; white-space:pre-wrap;">${escapeHtml(book.introduction)}</p>
-                        </div>
-                    ` : ''}
-                    <div class="price-large">
-                        ￥${priceYuan} 
-                    </div>
-                    <div class="action-buttons">
-                        <button class="add-to-cart-detail" data-id="${book.book_id}">
-                            <i class="ri-shopping-cart-line"></i> 加入购物车
-                        </button>
-                    </div>
+            <div class="detail-info">
+                <h2><i class="ri-book-2-line"></i> ${escapeHtml(book.title)}</h2>
+                <div class="meta-grid">
+                    <div class="meta-item"><i class="ri-user-pen-line"></i> <strong>作者：</strong>${escapeHtml(book.author)}</div>
+                    <div class="meta-item"><i class="ri-building-line"></i> <strong>出版社：</strong>${escapeHtml(book.publisher)}</div>
+                    <div class="meta-item"><i class="ri-stack-line"></i> <strong>库存：</strong>${book.stock} 件</div>
+                    <div class="meta-item"><i class="ri-bar-chart-grouped-line"></i> <strong>销量：</strong>${book.sales} 件</div>
+                    <div class="meta-item"><i class="ri-star-s-line"></i> <strong>评分：</strong>${scoreAvg} / 5.0 <span class="stars-readonly">${readonlyStars}</span></div>
                 </div>
-            `;
+                ${tagsHtml ? `<div class="tag-list">${tagsHtml}</div>` : ''}
+                ${book.introduction ? `<div class="introduction-section" style="margin:1.5rem 0; padding:1rem; background:var(--gray-50); border-radius:var(--radius-sm); border-left:4px solid var(--primary);"><h3><i class="ri-article-line"></i> 书籍简介</h3><p style="white-space:pre-wrap;">${escapeHtml(book.introduction)}</p></div>` : ''}
+                <div class="price-large">￥${priceYuan}</div>
+                <div class="action-buttons"><button class="add-to-cart-detail" data-id="${book.book_id}"><i class="ri-shopping-cart-line"></i> 加入购物车</button></div>
+            </div>
+        `;
 
-            // 评分 + 评论分离区域
+            // 评分区域（保持不变）
             const ratingHtml = `
-                <div class="rating-section">
-                    <div class="rating-title">
-                        <i class="ri-star-smile-line" style="color: #fbbf24;"></i> 评分与评论
-                    </div>
-                    <!-- 星星选择 -->
-                    <div class="stars-input" id="star-input-area">
-                        <i class="ri-star-line" data-value="5"></i>
-                        <i class="ri-star-line" data-value="4"></i>
-                        <i class="ri-star-line" data-value="3"></i>
-                        <i class="ri-star-line" data-value="2"></i>
-                        <i class="ri-star-line" data-value="1"></i>
-                    </div>
-                    <div class="rating-actions">
-                        <button id="submit-score-btn"><i class="ri-star-line"></i> 提交评分</button>
-                        <!-- 预留空间，可添加提示 -->
-                    </div>
-
-                    <div class="rating-feedback">
-                        <textarea id="comment-input" placeholder="写下你的评论…… (选填)"></textarea>
-                    </div>
-                    <div class="rating-actions">
-                        <button id="submit-comment-btn"><i class="ri-send-plane-line"></i> 发表评论</button>
-                    </div>
+            <div class="rating-section">
+                <div class="rating-title"><i class="ri-star-smile-line"></i> 评分</div>
+                <div class="stars-input" id="star-input-area">
+                    <i class="ri-star-line" data-value="5"></i>
+                    <i class="ri-star-line" data-value="4"></i>
+                    <i class="ri-star-line" data-value="3"></i>
+                    <i class="ri-star-line" data-value="2"></i>
+                    <i class="ri-star-line" data-value="1"></i>
                 </div>
-            `;
+                <div class="rating-actions"><button id="submit-score-btn"><i class="ri-star-line"></i> 提交评分</button></div>
+            </div>
+        `;
 
-            const fullHtml = `
-                <div class="detail-wrapper">
-                    <div class="detail-cover">
-                        <img src="${escapeHtml(coverSrc)}" alt="${escapeHtml(book.title)}封面" loading="lazy">
-                    </div>
-                    ${infoHtml}
+            // 全新评论区域（支持楼中楼）
+            const commentsHtml = `
+            <div class="comments-section">
+                <div class="comment-header"><i class="ri-discuss-line"></i> 读者评论</div>
+                <div class="new-comment">
+                    <textarea id="new-comment-text" rows="3" placeholder="分享你的想法..."></textarea>
+                    <button id="publish-comment-btn"><i class="ri-send-plane-line"></i> 发表评论</button>
                 </div>
-                ${ratingHtml}
-            `;
+                <div id="comments-list-container"></div>
+            </div>
+        `;
 
+            const fullHtml = `<div class="detail-wrapper"><div class="detail-cover"><img src="${escapeHtml(coverSrc)}" alt="封面"></div>${infoHtml}</div>${ratingHtml}${commentsHtml}`;
             container.innerHTML = fullHtml;
 
-            // 绑定事件
+            // 绑定原有事件
             bindStarEvents();
             document.querySelector('.add-to-cart-detail')?.addEventListener('click', function(e) {
                 const id = this.dataset.id;
                 if (id) addToCart(id);
             });
             document.getElementById('submit-score-btn')?.addEventListener('click', submitScore);
-            document.getElementById('submit-comment-btn')?.addEventListener('click', submitComment);
+            document.getElementById('publish-comment-btn')?.addEventListener('click', submitNewComment);
         }
 
-        // 生成只读星星 (满分5分)
-        function generateReadonlyStars(score) {
-            const floatScore = parseFloat(score) || 0;
-            const fullStars = Math.floor(floatScore);
-            const halfStar = (floatScore - fullStars) >= 0.5 ? 1 : 0;
-            const emptyStars = 5 - fullStars - halfStar;
-
-            let html = '';
-            for (let i=0; i<fullStars; i++) html += '<i class="ri-star-fill" style="color:#fbbf24;"></i>';
-            if (halfStar) html += '<i class="ri-star-half-line" style="color:#fbbf24;"></i>';
-            for (let i=0; i<emptyStars; i++) html += '<i class="ri-star-line" style="color:#d1d5db;"></i>';
-            return html;
-        }
-
-        // 星星点击交互
+        // 星星评分交互
         function bindStarEvents() {
             const stars = document.querySelectorAll('.stars-input i');
-            // 移除原有监听，重新绑定
-            stars.forEach(star => {
-                star.replaceWith(star.cloneNode(true));
-            });
+            stars.forEach(star => star.replaceWith(star.cloneNode(true)));
             const freshStars = document.querySelectorAll('.stars-input i');
             freshStars.forEach(star => {
-                star.addEventListener('click', function(e) {
-                    const value = parseInt(this.dataset.value, 10);
-                    selectedRating = value;
+                star.addEventListener('click', function() {
+                    selectedRating = parseInt(this.dataset.value, 10);
                     freshStars.forEach(s => s.classList.remove('selected'));
                     freshStars.forEach(s => {
-                        if (parseInt(s.dataset.value, 10) <= value) {
-                            s.classList.add('selected');
-                        }
+                        if (parseInt(s.dataset.value, 10) <= selectedRating) s.classList.add('selected');
                     });
                 });
             });
-            selectedRating = 0; // 初始无选中
+            selectedRating = 0;
         }
 
-        // ---------- 提交评分（仅星级）----------
         async function submitScore() {
-            if (selectedRating < 1 || selectedRating > 5) {
-                alert('请先点击星星选择评分 (1-5星)');
-                return;
-            }
+            if (selectedRating < 1 || selectedRating > 5) { alert('请先点击星星选择评分'); return; }
             if (!await ensureLoggedIn()) return;
-
             try {
-                const res = await apiFetch('/api/rateBook', {  // 请根据实际后端接口调整
+                const res = await apiFetch('/api/rateBook', {
                     method: 'POST',
-                    body: JSON.stringify({
-                        book_id: parseInt(currentBookId, 10),
-                        user_id: null,
-                        score: selectedRating
-                    })
+                    body: JSON.stringify({ book_id: parseInt(currentBookId, 10), score: selectedRating })
                 });
                 const data = await res.json();
                 if (data.code === 1000) {
                     alert('评分提交成功！');
-                    // 刷新详情以更新平均分
                     await fetchBookDetail(currentBookId);
                 } else if (data.code === 1007 || data.code === 1008) {
-                    if (confirm('登录状态已失效，请重新登录')) {
-                        window.location.href = '/page/LoginPage';
-                    }
-                } else {
-                    alert(data.msg || '评分失败，请稍后重试');
-                }
-            } catch (err) {
-                console.error(err);
-                alert('网络错误，无法提交评分');
-            }
+                    if (confirm('登录状态已失效，请重新登录')) window.location.href = '/page/LoginPage';
+                } else { alert(data.msg || '评分失败'); }
+            } catch(err) { alert('网络错误'); }
         }
 
-        // ---------- 提交评论（仅文本）----------
-        async function submitComment() {
-            const comment = document.getElementById('comment-input').value.trim();
-            if (!comment) {
-                alert('评论内容不能为空');
+        // ---------- 页面初始化 ----------
+        document.addEventListener('DOMContentLoaded', async function() {
+            const loggedIn = await checkAuth();
+            const authArea = document.getElementById('auth-area');
+            const guestArea = document.getElementById('guest-area');
+            if (loggedIn) {
+                authArea.style.display = 'flex';
+                guestArea.style.display = 'none';
+                await fetchCurrentUser();
+            } else {
+                authArea.style.display = 'none';
+                guestArea.style.display = 'flex';
+            }
+            const bookId = getQueryParam('book_id');
+            if (!bookId) {
+                document.getElementById('book-detail-container').innerHTML = `<div class="no-book"><i class="ri-error-warning-line"></i><p>缺少书籍ID</p><a href="/page/HomePage">返回首页</a></div>`;
                 return;
             }
-            if (!await ensureLoggedIn()) return;
-
-            try {
-                const res = await apiFetch('/api/rateBook/comment', {  // 请根据实际后端接口调整
-                    method: 'POST',
-                    body: JSON.stringify({
-                        book_id: parseInt(currentBookId, 10),
-                        comment: comment
-                    })
-                });
-                const data = await res.json();
-                if (data.code === 1000) {
-                    alert('评论发表成功！');
-                    document.getElementById('comment-input').value = ''; // 清空
-                    // 如果有评论列表可刷新，此处略
-                } else if (data.code === 1007 || data.code === 1008) {
-                    if (confirm('登录状态已失效，请重新登录')) {
-                        window.location.href = '/page/LoginPage';
-                    }
-                } else {
-                    alert(data.msg || '评论失败，请稍后重试');
-                }
-            } catch (err) {
-                console.error(err);
-                alert('网络错误，无法发表评论');
-            }
-        }
+            currentBookId = bookId;
+            await fetchBookDetail(bookId);
+        });
     })();
 </script>
 </body>
