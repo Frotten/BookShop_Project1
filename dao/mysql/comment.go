@@ -15,8 +15,6 @@ func SaveComment(p *models.CommentBook) error {
 	if err := DB.Create(p).Error; err != nil {
 		return err
 	}
-
-	// parent_id != 0 说明它是对某条评论的回复，更新父评论的直回复数
 	if p.ParentID != 0 {
 		if err := DB.Model(&models.CommentBook{}).
 			Where("comment_id = ?", p.ParentID).

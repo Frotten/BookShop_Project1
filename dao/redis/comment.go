@@ -16,7 +16,6 @@ func CommentListKey(bookID int64) string {
 	return "comment:book:" + strconv.FormatInt(bookID, 10) + ":list"
 }
 
-// GetCommentsFromCache 从 Redis 获取评论列表（优先）
 func GetCommentsFromCache(bookID int64) ([]models.CommentView, bool, error) {
 	key := CommentListKey(bookID)
 	raw, err := RDB.Get(ctx, key).Result()

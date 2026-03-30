@@ -48,7 +48,8 @@
         let currentBook = null;
         let selectedRating = 0;
         let allComments = [];       // 存储从后端获取的评论列表（平铺）
-        let currentUserId = null;   // 当前登录用户ID（可选，用于判断是否自己的评论）
+        let currentUserId = null;   // 当前登录用户 ID（可选，用于判断是否自己的评论）
+        let likedCommentIds = new Set(); // 记录已点赞的评论 ID
 
         // ---------- 工具函数（复用已有的 escapeHtml）----------
         function escapeHtml(unsafe) {
@@ -59,6 +60,60 @@
                 .replace(/>/g, "&gt;")
                 .replace(/"/g, "&quot;")
                 .replace(/'/g, "&#039;");
+        }
+
+        // 生成抽象头像 - 从用户名提取字符
+        function generateAvatar(name) {
+            if (!name) return '?';
+            const trimmed = name.trim();
+            if (trimmed.length === 0) return '?';
+
+            // 如果是中文，取第一个字；如果是英文，取首字母
+            const firstChar = trimmed[0];
+            if (/[\u4e00-\u9fa5]/.test(firstChar)) {
+                return firstChar;
+            } else if (/[a-zA-Z]/.test(firstChar)) {
+                return firstChar.toUpperCase();
+            } else {
+                return firstChar;
+            }
+        }
+
+        // 生成本地存储键名
+        function getLikeStorageKey() {
+            return `liked_comments_${currentBookId}`;
+        }
+
+        // 加载已点赞记录
+        function loadLikedComments() {
+            try {
+                const stored = localStorage.getItem(getLikeStorageKey());
+                if (stored) {
+                    likedCommentIds = new Set(JSON.parse(stored));
+                }
+            } catch(e) {
+                console.error('加载点赞记录失败', e);
+            }
+        }
+
+        // 保存已点赞记录
+        function saveLikedComments() {
+            try {
+                localStorage.setItem(getLikeStorageKey(), JSON.stringify([...likedCommentIds]));
+            } catch(e) {
+                console.error('保存点赞记录失败', e);
+            }
+        }
+
+        // 检查是否可以点赞
+        function canLikeComment(commentId) {
+            return !likedCommentIds.has(commentId);
+        }
+
+        // 标记为已点赞
+        function markAsLiked(commentId) {
+            likedCommentIds.add(commentId);
+            saveLikedComments();
         }
 
         // 生成只读星星
@@ -195,13 +250,14 @@
             if (isDeleted) statusBadge = '<span class="status-badge status-deleted">[已删除]</span>';
             else if (isPending) statusBadge = '<span class="status-badge">审核中</span>';
 
-            const avatar = comment.user_avatar || '/static/default-avatar.png';
             const userName = escapeHtml(comment.user_name || '匿名用户');
+            const avatarText = generateAvatar(comment.user_name || '?');
             const time = new Date(comment.comment_time).toLocaleString();
             const content = isDeleted ? '该评论已被删除' : escapeHtml(comment.comment);
             const contentClass = isDeleted ? 'comment-content status-deleted' : 'comment-content';
             const likeCount = comment.like_count || 0;
             const replyCount = comment.reply_count || 0;
+            const isLiked = canLikeComment(comment.comment_id);
 
             let repliesHtml = '';
             if (comment.replies && comment.replies.length) {
@@ -215,8 +271,8 @@
             return `
             <div class="comment-item" data-comment-id="${comment.comment_id}" data-root-id="${comment.root_id || comment.comment_id}" data-parent-id="${comment.parent_id}">
                 <div style="display:flex;">
-                    <div class="comment-avatar">
-                        <img src="${avatar}" onerror="this.src='/static/default-avatar.png'">
+                    <div class="comment-avatar" title="${userName}">
+                        ${avatarText}
                     </div>
                     <div class="comment-main">
                         <div>
@@ -226,7 +282,7 @@
                         </div>
                         <div class="${contentClass}">${content}</div>
                         <div class="comment-actions">
-                            <span class="action-like" data-id="${comment.comment_id}">
+                            <span class="action-like ${!isLiked ? 'liked' : ''}" data-id="${comment.comment_id}" title="${!isLiked ? '已赞' : '点赞'}">
                                 <i class="ri-thumb-up-line"></i> <span class="like-count">${likeCount}</span>
                             </span>
                             <span class="action-reply" data-id="${comment.comment_id}">
@@ -280,6 +336,12 @@
         async function likeComment(id, el) {
             if (!await ensureLoggedIn()) return;
 
+            // 检查是否已经点过赞
+            if (!canLikeComment(id)) {
+                alert('你已经赞过这条评论了~');
+                return;
+            }
+
             const res = await apiFetch('/api/comment/like', {
                 method:'POST',
                 body:JSON.stringify({comment_id:+id})
@@ -288,6 +350,10 @@
             if (data.code === 1000) {
                 const span = el.querySelector('.like-count');
                 span.innerText = +span.innerText + 1;
+                el.classList.add('liked');
+                markAsLiked(id);
+            } else {
+                alert(data.msg || '点赞失败');
             }
         }
 
@@ -487,7 +553,7 @@
             } catch(err) { alert('网络错误'); }
         }
 
-        // ---------- 页面初始化 ----------
+        // 页面初始化
         document.addEventListener('DOMContentLoaded', async function() {
             const loggedIn = await checkAuth();
             const authArea = document.getElementById('auth-area');
@@ -502,10 +568,11 @@
             }
             const bookId = getQueryParam('book_id');
             if (!bookId) {
-                document.getElementById('book-detail-container').innerHTML = `<div class="no-book"><i class="ri-error-warning-line"></i><p>缺少书籍ID</p><a href="/page/HomePage">返回首页</a></div>`;
+                document.getElementById('book-detail-container').innerHTML = `<div class="no-book"><i class="ri-error-warning-line"></i><p>缺少书籍 ID</p><a href="/page/HomePage">返回首页</a></div>`;
                 return;
             }
             currentBookId = bookId;
+            loadLikedComments(); // 加载已点赞记录
             await fetchBookDetail(bookId);
         });
     })();
