@@ -474,7 +474,7 @@
                 ${tagsHtml ? `<div class="tag-list">${tagsHtml}</div>` : ''}
                 ${book.introduction ? `<div class="introduction-section" style="margin:1.5rem 0; padding:1rem; background:var(--gray-50); border-radius:var(--radius-sm); border-left:4px solid var(--primary);"><h3><i class="ri-article-line"></i> 书籍简介</h3><p style="white-space:pre-wrap;">${escapeHtml(book.introduction)}</p></div>` : ''}
                 <div class="price-large">￥${priceYuan}</div>
-                <div class="action-buttons"><button class="add-to-cart-detail" data-id="${book.book_id}"><i class="ri-shopping-cart-line"></i> 加入购物车</button></div>
+                <div class="action-buttons"><button class="add-to-cart-detail" data-id="${book.book_id}" data-title="${escapeHtml(book.title)}" data-price="${book.price}" data-stock="${book.stock}"><i class="ri-shopping-cart-line"></i> 加入购物车</button></div>
             </div>
         `;
 
@@ -512,7 +512,12 @@
             bindStarEvents();
             document.querySelector('.add-to-cart-detail')?.addEventListener('click', function(e) {
                 const id = this.dataset.id;
-                if (id) addToCart(id);
+                const title = this.dataset.title;
+                const price = this.dataset.price;
+                const stock = parseInt(this.dataset.stock) || 99;
+                if (id) {
+                    showQuantityDialog(id, title, price, stock);
+                }
             });
             document.getElementById('submit-score-btn')?.addEventListener('click', submitScore);
             document.getElementById('publish-comment-btn')?.addEventListener('click', submitNewComment);

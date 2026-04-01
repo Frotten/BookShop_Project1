@@ -36,6 +36,11 @@ func SetUp() *gin.Engine {
 			Login.POST("/rateBook", controllers.RateBookHandle)
 			Login.POST("/comment", controllers.CommentHandle)
 			Login.POST("/comment/like", controllers.CommentLikeHandle)
+			Login.POST("/cart", controllers.AddBookToCartHandle)
+			Login.GET("/cart", controllers.GetCartListHandle)
+			Login.PUT("/cart", controllers.UpdateCartItemHandle)
+			//Login.DELETE("/cart/:book_id", controllers.DeleteCartItemHandle)
+			//Login.DELETE("/cart", controllers.ClearCartHandle)
 		}
 	}
 	v2 := r.Group("/page")

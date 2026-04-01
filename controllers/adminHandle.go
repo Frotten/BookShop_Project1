@@ -49,14 +49,14 @@ func AdminLoginHandler(c *gin.Context) {
 	}
 	accessToken, err := jwt.GenAdminToken(A.AdminID, A.Username)
 	if err != nil {
-		zap.L().Error("jwt.GenToken failed", zap.Error(err))
+		zap.L().Error("jwt.GenAdminToken failed", zap.Error(err))
 		HandleResponse(c, models.CodeServerBusy)
 		return
 	}
 
 	refreshToken, tokenHash, err := jwt.GenerateRefreshToken()
 	if err != nil {
-		zap.L().Error("jwt.GenerateRefreshToken failed", zap.Error(err))
+		zap.L().Error("jwt.GenerateAdminRefreshToken failed", zap.Error(err))
 		HandleResponse(c, models.CodeServerBusy)
 		return
 	}

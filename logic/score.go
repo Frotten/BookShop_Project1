@@ -4,7 +4,6 @@ import (
 	"Project1_Shop/dao/mysql"
 	"Project1_Shop/dao/redis"
 	"Project1_Shop/models"
-	"math"
 	"strconv"
 
 	"go.uber.org/zap"
@@ -32,11 +31,12 @@ func NewScoreAndRank(UserID, BookID, Score int64) error {
 	if err != nil {
 		return err
 	}
-	Book, err := mysql.GetBookByID(BookID)
+	NewBook, err := mysql.GetBookByID(BookID)
 	if err != nil {
 		return err
 	}
-	err = redis.SetBook(Book, AnsScore*100)
+	BookCache := BookToCache(NewBook)
+	err = redis.SetBookCache(BookCache, int64(AnsScore)*100)
 	if err != nil {
 		return err
 	}
@@ -44,36 +44,23 @@ func NewScoreAndRank(UserID, BookID, Score int64) error {
 }
 
 func UpdateScoreAndRank(UserID, BookID, Score int64) error {
-	BeforeScore, err := redis.GetBeforeBookScore(UserID, BookID)
+	beforeScore, err := redis.GetBeforeBookScore(UserID, BookID)
 	if err != nil {
 		return err
 	}
-	err = redis.CacheBookScoreSum(BookID, Score-BeforeScore) //评分更新需要先获取用户之前的评分，然后计算新的评分差值，再更新Redis中的评分总和
-	if err != nil {
+	diff := Score - beforeScore
+	if err = redis.CacheBookScoreSum(BookID, diff); err != nil {
 		return err
 	}
-	err = redis.UpdateUserRate(UserID, BookID, Score)
-	if err != nil {
+	if err = redis.UpdateUserRate(UserID, BookID, Score); err != nil {
 		return err
 	}
-	AllScore, Count, err := redis.GetAllScoreAndCount(BookID)
-	if err != nil {
+	sum, count, err := redis.GetAllScoreAndCount(BookID)
+	if err != nil || count == 0 {
 		return err
 	}
-	AnsScore := models.WeightedCalculation(AllScore, Count)
-	err = redis.AddScoreRank(BookID, AnsScore)
-	if err != nil {
-		return err
-	}
-	Book, err := mysql.GetBookByID(BookID)
-	if err != nil {
-		return err
-	}
-	err = redis.UpdateBook(Book, AnsScore*100)
-	if err != nil {
-		return err
-	}
-	return nil
+	score := models.WeightedCalculation(sum, count)
+	return redis.AddScoreRank(BookID, score)
 }
 
 func RateNewBook(p *models.UserRateBook) models.ResCode { //这里必须保证MySQL先成功才能去缓存Redis，不能并发
@@ -86,15 +73,15 @@ func RateNewBook(p *models.UserRateBook) models.ResCode { //这里必须保证My
 	//更新MySQL数据库中的评分信息
 	err = mysql.UpdateRateBook(RB)
 	if err != nil {
-		return models.CodeServerBusy
+		return models.CodeMySQLError
 	}
 	err = mysql.UpdateUserRate(p)
 	if err != nil {
-		return models.CodeServerBusy
+		return models.CodeMySQLError
 	}
 	err = mysql.UpdateBookScore(RB)
 	if err != nil {
-		return models.CodeServerBusy
+		return models.CodeMySQLError
 	}
 	//MySQL和Redis的分界线
 	select {
@@ -112,31 +99,31 @@ func RateNewBook(p *models.UserRateBook) models.ResCode { //这里必须保证My
 
 func RateUpdateBook(p *models.UserRateBook) models.ResCode {
 	RB, err := mysql.GetRateBookByID(p.BookID)
-	BeforeScore, err := mysql.GetBeforeBookScore(p.BookID, p.UserID)
 	if err != nil {
-		return models.CodeServerBusy
+		return models.CodeMySQLError
 	}
-	RB.Score = RB.Score + p.Score - BeforeScore
-	//更新MySQL数据库中的评分信息
-	err = mysql.UpdateRateBook(RB)
+	beforeScore, err := mysql.GetBeforeBookScore(p.BookID, p.UserID)
 	if err != nil {
-		return models.CodeServerBusy
+		return models.CodeMySQLError
 	}
-	err = mysql.UpdateUserRate(p)
-	if err != nil {
-		return models.CodeServerBusy
+	RB.Score = RB.Score + p.Score - beforeScore
+	if err = mysql.UpdateRateBook(RB); err != nil {
+		return models.CodeMySQLError
 	}
-	err = mysql.UpdateBookScore(RB)
-	if err != nil {
-		return models.CodeServerBusy
+	if err = mysql.UpdateUserRate(p); err != nil {
+		return models.CodeMySQLError
 	}
+	if err = mysql.UpdateBookScore(RB); err != nil {
+		return models.CodeMySQLError
+	}
+	_ = redis.DeleteBookCache(p.BookID)
 	select {
 	case models.RateChan <- p:
 	default:
 		go func() {
 			err := UpdateScoreAndRank(p.UserID, p.BookID, p.Score)
 			if err != nil {
-				zap.L().Error("UpdateScoreAndUpdateRedis Failed", zap.Error(err))
+				zap.L().Error("UpdateScoreAndRank Failed", zap.Error(err))
 			}
 		}()
 	}
@@ -146,13 +133,13 @@ func RateUpdateBook(p *models.UserRateBook) models.ResCode {
 func RateBook(p *models.UserRateBook) models.ResCode {
 	ok, err := redis.CheckRate(p)
 	if err != nil {
-		return models.CodeServerBusy
+		return models.CodeRedisError
 	}
 	if !ok {
 		ok = mysql.CheckRate(p)
 		if ok {
-			redis.UpdateUserRate(p.UserID, p.BookID, p.Score) //获取用户ID，书籍ID，上次评分
-			p.Op = models.RateOpNew
+			_ = redis.UpdateUserRate(p.UserID, p.BookID, p.Score) //获取用户ID，书籍ID，上次评分
+			p.Op = models.RateOpUpdate
 			return RateUpdateBook(p)
 		}
 		p.Op = models.RateOpNew
@@ -167,7 +154,7 @@ func GetTopScoreList() ([]*models.ListBook, models.ResCode) {
 	if err != nil { //查找失败，默认原排行榜丢失，从MySQL中重新获取排行榜
 		Books, _, err := mysql.GetBooksPageByScore(1)
 		if err != nil {
-			return nil, models.CodeServerBusy
+			return nil, models.CodeMySQLError
 		}
 		var AnsList []*models.ListBook
 		for _, Book := range Books {
@@ -198,7 +185,7 @@ func GetTopScoreList() ([]*models.ListBook, models.ResCode) {
 			zap.L().Error("unexpected member type", zap.Any("value", v))
 			continue
 		}
-		Score := math.Trunc(z.Score*100) / 100
+		Score := int64(z.Score)
 		T, err := redis.GetBookSummaryByBookID(BookID, Score)
 		if err != nil {
 			continue

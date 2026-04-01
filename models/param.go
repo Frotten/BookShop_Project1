@@ -44,7 +44,12 @@ type CommentParam struct {
 	Comment  string `json:"comment"`
 }
 
-// 点赞入参：前端只会提交 comment_id
 type CommentLikeParam struct {
 	CommentID int64 `json:"comment_id" binding:"required"`
+}
+
+type CartParam struct {
+	BookID   int64 `json:"book_id" binding:"required"`
+	UserID   int64 `json:"user_id"`
+	Quantity int64 `json:"quantity"`
 }

@@ -176,9 +176,9 @@
             return
         }
 
-        // 将逗号分隔的标签字符串转换为数组
+        // 将逗号分隔的标签字符串转换为数组（支持中文逗号和英文逗号）
         const tagsInput = document.getElementById("tags").value.trim()
-        const tagsArray = tagsInput ? tagsInput.split(/[,,]/).map(t => t.trim()).filter(t => t) : []
+        const tagsArray = tagsInput ? tagsInput.split(/[,，]/).map(t => t.trim()).filter(t => t) : []
 
         const data = {
             book_id: currentBook.book_id,

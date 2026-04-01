@@ -15,6 +15,7 @@ func StartRateWorker(ctx context.Context) { //设置工作池
 	}
 }
 
+// rateWorker 用来处理评分，不涉及金钱以及严格一致性，还拥有极低延迟，实现简单，可以作为对MQ的简易模拟
 func rateWorker(ctx context.Context, id int) {
 	for {
 		select {

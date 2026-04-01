@@ -20,6 +20,8 @@ const (
 	CodeBookExist
 	CodeBookNotExist
 	CodeListError
+	CodeMySQLError
+	CodeRedisError
 )
 
 var codeMsgMap = map[ResCode]string{
@@ -34,6 +36,8 @@ var codeMsgMap = map[ResCode]string{
 	CodeBookExist:       "书籍已存在",
 	CodeBookNotExist:    "书籍不存在",
 	CodeListError:       "列表存在问题",
+	CodeMySQLError:      "数据库错误",
+	CodeRedisError:      "缓存错误",
 }
 
 func (rc ResCode) Msg() string {

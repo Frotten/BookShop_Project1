@@ -18,7 +18,7 @@ func GetCommentsByBookID(bookID int64) ([]models.CommentView, models.ResCode) {
 	// 2) MySQL 回落
 	list, err := mysql.GetCommentsByBookID(bookID)
 	if err != nil {
-		return nil, models.CodeServerBusy
+		return nil, models.CodeMySQLError
 	}
 	// 3) 写入 Redis（忽略写入失败，避免影响主链路）
 	_ = redis.SetCommentsToCache(bookID, list)
@@ -29,7 +29,7 @@ func GetCommentsByBookID(bookID int64) ([]models.CommentView, models.ResCode) {
 func LikeComment(commentID int64) models.ResCode {
 	bookID, err := mysql.LikeComment(commentID)
 	if err != nil {
-		return models.CodeServerBusy
+		return models.CodeMySQLError
 	}
 	_ = redis.DelCommentsCache(bookID)
 	return models.CodeSuccess
@@ -37,7 +37,7 @@ func LikeComment(commentID int64) models.ResCode {
 
 func CommentBook(p *models.CommentBook) models.ResCode {
 	if err := mysql.SaveComment(p); err != nil {
-		return models.CodeServerBusy
+		return models.CodeMySQLError
 	}
 	_ = redis.DelCommentsCache(p.BookID)
 	return models.CodeSuccess

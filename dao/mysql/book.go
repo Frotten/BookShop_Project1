@@ -47,6 +47,12 @@ func GetBookByID(ID int64) (*models.Book, error) {
 	return &Book, result.Error
 }
 
+func GetBooksByIDs(IDs []int64) ([]*models.Book, error) {
+	var Books []*models.Book
+	err := DB.Where("book_id IN ?", IDs).Find(&Books).Error
+	return Books, err
+}
+
 func DeleteBook(ID int64) error {
 	result := DB.Where("book_id = ?", ID).Delete(&models.Book{})
 	return result.Error

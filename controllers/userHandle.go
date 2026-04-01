@@ -56,14 +56,6 @@ func LoginHandler(c *gin.Context) {
 		return
 	}
 
-	//mysql.DB.Create(&models.RefreshToken{
-	//	UserID:    User.UserID,
-	//	TokenHash: tokenHash,
-	//	ExpiresAt: time.Now().Add(jwt.TokenExpireDuration),
-	//})
-
-	//redis.RDB.Set("login:token:{"+refreshToken+"}", User.UserID, jwt.TokenExpireDuration)
-
 	redis.RDB.Set(c, "auth:refresh:"+tokenHash, User.UserID, jwt.TokenExpireDuration)
 
 	c.SetCookie(

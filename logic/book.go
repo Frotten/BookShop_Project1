@@ -4,17 +4,47 @@ import (
 	"Project1_Shop/dao/mysql"
 	"Project1_Shop/dao/redis"
 	"Project1_Shop/models"
+	"strconv"
 )
 
+func BookToCache(book *models.Book) *models.BookCache {
+	Tags, err := mysql.GetTagsByBookID(book.BookID)
+	if err != nil {
+		return nil
+	}
+	var tagNames []string
+	for _, t := range Tags {
+		tagNames = append(tagNames, t.Name)
+	}
+	return &models.BookCache{
+		BookID:       book.BookID,
+		Title:        book.Title,
+		Author:       book.Author,
+		Publisher:    book.Publisher,
+		Introduction: book.Introduction,
+		Stock:        book.Stock,
+		Price:        book.Price,
+		CoverImage:   book.CoverImage,
+		Tags:         tagNames,
+		Sales:        book.Sales,
+		Score:        book.Score,
+	}
+}
+
 func GetPageBooks(Page int64) (*models.Page, error) {
-	RedisBooks, total, err := redis.GetBooksPageByScore(Page)
-	if err == nil && total != 0 {
-		Pages := &models.Page{
+	start := (Page - 1) * models.PageSize
+	end := start + models.PageSize - 1
+	ids, total, err := redis.GetRankIDsByScore(start, end)
+	if err != nil {
+		return nil, err
+	}
+	books, err := GetBooksByIDs(ids)
+	if err == nil {
+		return &models.Page{
 			Page:  Page,
+			Data:  books,
 			Total: total,
-			Data:  RedisBooks,
-		}
-		return Pages, nil
+		}, nil
 	}
 	SQLBooks, total, err := mysql.GetBooksPageByScore(Page)
 	if err != nil {
@@ -23,11 +53,8 @@ func GetPageBooks(Page int64) (*models.Page, error) {
 	for _, Book := range SQLBooks {
 		T := BookListToCache(Book)
 		_ = redis.SetBookSummary(T)
-		err = redis.SetBook(Book, float64(Book.Score)/100)
-		if err != nil {
-			continue
-		}
-		err = redis.AddScoreRank(Book.BookID, float64(Book.Score)/100)
+		BookCache := BookToCache(Book)
+		err = redis.SetBookCache(BookCache, Book.Score)
 		if err != nil {
 			continue
 		}
@@ -58,25 +85,26 @@ func AddBook(p *models.AddBookParam) models.ResCode {
 	}
 	err := mysql.AddBook(book)
 	if err != nil {
-		return models.CodeServerBusy
+		return models.CodeMySQLError
 	}
 	for _, tagName := range p.Tags {
 		tag, err := mysql.GetTagByName(tagName)
 		if err != nil {
-			return models.CodeServerBusy
+			return models.CodeMySQLError
 		}
 		err = mysql.AddBookTag(book.BookID, tag.ID)
 		if err != nil {
-			return models.CodeServerBusy
+			return models.CodeMySQLError
 		}
 	}
-	err = redis.SetBook(book, 0)
+	BookCache := BookToCache(book)
+	err = redis.SetBookCache(BookCache, 0)
 	if err != nil {
-		return models.CodeServerBusy
+		return models.CodeRedisError
 	}
 	err = redis.AddScoreRank(book.BookID, 0)
 	if err != nil {
-		return models.CodeServerBusy
+		return models.CodeRedisError
 	}
 	return models.CodeSuccess
 }
@@ -90,7 +118,7 @@ func BookListToCache(book *models.Book) *models.ListBook {
 		BookID: book.BookID,
 		Title:  book.Title,
 		Sales:  book.Sales,
-		Score:  float64(book.Score) / 100,
+		Score:  book.Score,
 		Tags:   tagNames,
 	}
 }
@@ -100,33 +128,51 @@ func GetBookByID(ID int64) (*models.BookCache, error) {
 	if err == nil && bookCache.BookID != -1 {
 		return bookCache, nil
 	}
-	book, err := mysql.GetBookByID(ID)
+	key := strconv.FormatInt(ID, 10)
+	v, err, _ := redis.G.Do(key, func() (interface{}, error) {
+		bookCache, err := redis.GetBookByBookID(ID)
+		if err == nil && bookCache.BookID != -1 {
+			return bookCache, nil
+		}
+		book, err := mysql.GetBookByID(ID)
+		if err != nil {
+			return nil, err
+		}
+		cache := BookToCache(book)
+		_ = redis.SetBookCache(cache, book.Score)
+		return cache, nil
+	})
 	if err != nil {
 		return nil, err
 	}
-	tags, err := mysql.GetTagsByBookID(ID)
+	return v.(*models.BookCache), nil
+}
+
+func GetBooksByIDs(ids []int64) ([]*models.BookCache, error) {
+	books, missIDs, err := redis.MGetBooks(ids)
 	if err != nil {
 		return nil, err
 	}
-	var tagNames []string
-	for _, t := range tags {
-		tagNames = append(tagNames, t.Name)
+	if len(missIDs) > 0 {
+		dbBooks, err := mysql.GetBooksByIDs(missIDs)
+		if err == nil {
+			for _, b := range dbBooks {
+				cacheBook := BookToCache(b)
+				if cacheBook == nil {
+					redis.SetEmpty("book:" + strconv.FormatInt(b.BookID, 10))
+					continue
+				}
+				books = append(books, cacheBook)
+				go func() {
+					err := redis.SetBookCache(cacheBook, cacheBook.Score)
+					if err != nil {
+						return
+					}
+				}()
+			}
+		}
 	}
-	cache := &models.BookCache{
-		BookID:       book.BookID,
-		Title:        book.Title,
-		Sales:        book.Sales,
-		Score:        float64(book.Score),
-		Author:       book.Author,
-		Publisher:    book.Publisher,
-		Introduction: book.Introduction,
-		Stock:        book.Stock,
-		Price:        float64(book.Price),
-		CoverImage:   book.CoverImage,
-		Tags:         tagNames,
-	}
-	_ = redis.SetBook(book, float64(book.Score))
-	return cache, nil
+	return books, nil
 }
 
 func DeleteBook(ID int64) models.ResCode {
@@ -138,7 +184,7 @@ func DeleteBook(ID int64) models.ResCode {
 	_ = mysql.DeleteBook(ID)
 	err := redis.DeleteBook(ID)
 	if err != nil {
-		return models.CodeServerBusy
+		return models.CodeRedisError
 	}
 	exist = mysql.ExistBook(ID)
 	if !exist {
@@ -150,7 +196,17 @@ func DeleteBook(ID int64) models.ResCode {
 func UpdateBook(B *models.UpdateBookParam) models.ResCode {
 	tags, err := mysql.GetTagsByNames(B.Tags)
 	if err != nil {
-		return models.CodeServerBusy
+		return models.CodeMySQLError
+	}
+	err = mysql.DeleteBookToTag(B.BookID)
+	if err != nil {
+		return models.CodeMySQLError
+	}
+	for _, tag := range tags {
+		err = mysql.AddBookTag(B.BookID, tag.ID)
+		if err != nil {
+			return models.CodeMySQLError
+		}
 	}
 	book := &models.Book{
 		BookID:       B.BookID,
@@ -164,11 +220,8 @@ func UpdateBook(B *models.UpdateBookParam) models.ResCode {
 		Tags:         tags,
 	}
 	if err := mysql.UpdateBook(book); err != nil {
-		return models.CodeServerBusy
+		return models.CodeMySQLError
 	}
-	err = redis.UpdateBookWithOutScore(book)
-	if err != nil {
-		return models.CodeServerBusy
-	}
+	_ = redis.DeleteBookCache(book.BookID)
 	return models.CodeSuccess
 }

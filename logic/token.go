@@ -16,37 +16,24 @@ import (
 func Refresh(refreshToken string, c *gin.Context) (string, string, error) {
 	hash := sha256.Sum256([]byte(refreshToken))
 	tokenHash := hex.EncodeToString(hash[:])
-
-	//var stored models.RefreshToken
-	//err := mysql.DB.Where("token_hash = ?", tokenHash).First(&stored).Error
-
 	ans, err := jwt.ParseToken(refreshToken)
-
 	if err != nil {
 		return "", "", errors.New("invalid refresh token")
 	}
-
 	if ans.ExpiresAt.Before(time.Now()) {
 		return "", "", errors.New("refresh token expired")
 	}
-
 	_, err = redis.RDB.Get(c, "auth:refresh:"+tokenHash).Result()
 	if err != nil {
 		return "", "", err
 	}
-	// 删除旧 token（防止重放攻击）
-	//mysql.DB.Delete(&stored)
 	redis.RDB.Del(c, "auth:refresh:"+tokenHash)
-
-	// 生成新 token
 	accessToken, _ := jwt.GenToken(ans.UserID, ans.Username)
 	newRefresh, newHash, _ := jwt.GenerateRefreshToken()
-
 	mysql.DB.Create(&models.RefreshToken{
 		UserID:    ans.UserID,
 		TokenHash: newHash,
 		ExpiresAt: time.Now().Add(7 * 24 * time.Hour),
 	})
-
 	return accessToken, newRefresh, nil
 }

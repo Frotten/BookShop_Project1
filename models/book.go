@@ -26,8 +26,8 @@ type BookCache struct {
 	Introduction string   `json:"introduction" redis:"introduction"`
 	Stock        int64    `json:"stock" redis:"stock"`
 	Sales        int64    `json:"sales" redis:"sales"`
-	Price        float64  `json:"price" redis:"price"`
-	Score        float64  `json:"score" redis:"score"`
+	Price        int64    `json:"price" redis:"price"`
+	Score        int64    `json:"score" redis:"score"`
 	CoverImage   string   `json:"cover_image" redis:"cover_image"`
 	Tags         []string `json:"tags" redis:"tags"`
 }
@@ -55,7 +55,7 @@ type UserRateBook struct {
 type ListBook struct {
 	BookID int64    `json:"book_id" redis:"book_id"`
 	Title  string   `json:"title" redis:"title"`
-	Score  float64  `json:"score" redis:"score"`
+	Score  int64    `json:"score" redis:"score"`
 	Sales  int64    `json:"sales" redis:"sales"`
 	Tags   []string `json:"tags" redis:"tags"`
 }
