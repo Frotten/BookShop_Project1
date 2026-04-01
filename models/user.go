@@ -22,3 +22,10 @@ type Admin struct {
 	Username string `json:"username" db:"username" gorm:"unique;not null;size:30" form:"username"`
 	Password string `json:"password" db:"password" gorm:"not null;size:255" form:"password"`
 }
+
+type UserView struct {
+	UserID   int64  `json:"user_id"`
+	Username string `json:"username"`
+	Email    string `json:"email"`
+	Gender   int8   `json:"gender"`
+}

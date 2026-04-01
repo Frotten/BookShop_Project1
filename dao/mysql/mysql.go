@@ -22,11 +22,11 @@ func Init(cfg *settings.MySQLConfig) (err error) {
 }
 
 func AutoMigration() {
-	// 在这里添加需要自动迁移的模型
 	AutoMigrate(
 		&models.Tag{},
 		&models.User{},
 		&models.Book{},
+		&models.Cart{},
 		&models.Admin{},
 		&models.BookTag{},
 		&models.RateBook{},

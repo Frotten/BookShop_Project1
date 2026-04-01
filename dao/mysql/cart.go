@@ -41,3 +41,11 @@ func GetCartList(UserID int64) ([]models.CartView, error) {
 func UpdateCartItem(CartParam *models.CartParam) error {
 	return DB.Model(&models.Cart{}).Where("user_id = ? AND book_id = ?", CartParam.UserID, CartParam.BookID).Update("quantity", CartParam.Quantity).Error
 }
+
+func DeleteCartItem(UserID, BookID int64) error {
+	return DB.Where("user_id = ? AND book_id = ?", UserID, BookID).Delete(&models.Cart{}).Error
+}
+
+func ClearCart(UserID int64) error {
+	return DB.Where("user_id = ?", UserID).Delete(&models.Cart{}).Error
+}

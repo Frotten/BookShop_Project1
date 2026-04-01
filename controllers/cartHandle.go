@@ -3,6 +3,7 @@ package controllers
 import (
 	"Project1_Shop/logic"
 	"Project1_Shop/models"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -70,6 +71,50 @@ func UpdateCartItemHandle(c *gin.Context) {
 	res := logic.UpdateCartItem(&CartParam)
 	if res != models.CodeSuccess {
 		zap.L().Error("UpdateCartItemHandle failed")
+		HandleResponse(c, res)
+		return
+	}
+	HandleSuccess(c, nil)
+}
+
+func DeleteCartItemHandle(c *gin.Context) {
+	UserID, ok := c.Get("userID")
+	if !ok || UserID == nil {
+		zap.L().Error("DeleteCartItemHandle failed: UserID not found in context")
+		HandleResponse(c, models.CodeServerBusy)
+		return
+	}
+	BookIDStr := c.Query("book_id")
+	if BookIDStr == "" {
+		zap.L().Error("DeleteCartItemHandle failed: book_id is empty")
+		HandleResponse(c, models.CodeInvalidParam)
+		return
+	}
+	BookID, err := strconv.ParseInt(BookIDStr, 10, 64)
+	if err != nil {
+		zap.L().Error("DeleteCartItemHandle failed: invalid book_id", zap.String("book_id", BookIDStr), zap.Error(err))
+		HandleResponse(c, models.CodeInvalidParam)
+		return
+	}
+	res := logic.DeleteCartItem(UserID.(int64), BookID)
+	if res != models.CodeSuccess {
+		zap.L().Error("DeleteCartItemHandle failed")
+		HandleResponse(c, res)
+		return
+	}
+	HandleSuccess(c, nil)
+}
+
+func ClearCartHandle(c *gin.Context) {
+	UserID, ok := c.Get("userID")
+	if !ok || UserID == nil {
+		zap.L().Error("ClearCartHandle failed: UserID not found in context")
+		HandleResponse(c, models.CodeServerBusy)
+		return
+	}
+	res := logic.ClearCart(UserID.(int64))
+	if res != models.CodeSuccess {
+		zap.L().Error("ClearCartHandle failed")
 		HandleResponse(c, res)
 		return
 	}

@@ -175,9 +175,9 @@
                 } else {
                     throw new Error(result.msg || '获取书籍失败');
                 }
-            } catch (err) {
-                console.error(err);
-                container.innerHTML = `<div class="no-book"><i class="ri-cloud-off-line"></i><p>加载失败：${escapeHtml(err.message)}</p><a href="/page/HomePage">返回首页</a></div>`;
+            } catch (res) {
+                console.error(res);
+                container.innerHTML = `<div class="no-book"><i class="ri-cloud-off-line"></i><p>加载失败：${escapeHtml(res.message)}</p><a href="/page/HomePage">返回首页</a></div>`;
             }
         }
 
@@ -440,8 +440,8 @@
                 } else {
                     alert(data.msg || '发表失败');
                 }
-            } catch(err) {
-                console.error(err);
+            } catch(res) {
+                console.error(res);
                 alert('网络错误');
             }
         }
@@ -555,7 +555,7 @@
                 } else if (data.code === 1007 || data.code === 1008) {
                     if (confirm('登录状态已失效，请重新登录')) window.location.href = '/page/LoginPage';
                 } else { alert(data.msg || '评分失败'); }
-            } catch(err) { alert('网络错误'); }
+            } catch(res) { alert('网络错误'); }
         }
 
         // 页面初始化

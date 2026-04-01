@@ -10,7 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func JWTAuthMiddleware() func(c *gin.Context) { //存在问题：用户登录后会被卡在NeedLogin处
+func JWTAuthMiddleware() func(c *gin.Context) {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {

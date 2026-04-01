@@ -50,3 +50,8 @@ func DelCartItem(UserID, BookID int64) error {
 	field := strconv.FormatInt(BookID, 10)
 	return RDB.HDel(ctx, key, field).Err()
 }
+
+func ClearCart(UserID int64) error {
+	key := "cart:" + strconv.FormatInt(UserID, 10)
+	return RDB.Del(ctx, key).Err()
+}

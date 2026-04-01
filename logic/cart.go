@@ -69,3 +69,27 @@ func UpdateCartItem(CartParam *models.CartParam) models.ResCode {
 	_ = redis.DelCartItem(CartParam.UserID, CartParam.BookID)
 	return models.CodeSuccess
 }
+
+func DeleteCartItem(UserID, BookID int64) models.ResCode {
+	err := mysql.DeleteCartItem(UserID, BookID)
+	if err != nil {
+		return models.CodeMySQLError
+	}
+	err = redis.DelCartItem(UserID, BookID)
+	if err != nil {
+		return models.CodeRedisError
+	}
+	return models.CodeSuccess
+}
+
+func ClearCart(UserID int64) models.ResCode {
+	err := mysql.ClearCart(UserID)
+	if err != nil {
+		return models.CodeMySQLError
+	}
+	err = redis.ClearCart(UserID)
+	if err != nil {
+		return models.CodeRedisError
+	}
+	return models.CodeSuccess
+}

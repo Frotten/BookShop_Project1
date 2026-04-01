@@ -2,7 +2,6 @@ package redis
 
 import (
 	"Project1_Shop/models"
-	"context"
 	"encoding/json"
 	"errors"
 	"math/rand"
@@ -11,12 +10,6 @@ import (
 
 	"github.com/redis/go-redis/v9"
 )
-
-var ctx = context.Background()
-
-const BufferTime = time.Minute * 3
-const ListTime = time.Hour * 24 * 7
-const BookTime = time.Hour * 24 * 7 * 2
 
 func CheckEmpty(key string) bool {
 	EmptyKey := GetEmpty(key)
@@ -189,30 +182,24 @@ func GetBookSummaryByBookID(BookID int64, Score int64) (*models.ListBook, error)
 	if !ok {
 		return nil, errors.New("already exist empty")
 	}
-	v, err, _ := G.Do(ID, func() (interface{}, error) {
-		data, err := RDB.HGetAll(ctx, key).Result()
-		if err != nil {
-			return nil, err
-		}
-		if len(data) == 0 {
-			SetEmpty(key)
-			return &models.ListBook{
-				BookID: -1,
-			}, nil
-		}
-		var tags []string
-		err = json.Unmarshal([]byte(data["tags"]), &tags)
-		return &models.ListBook{
-			BookID: BookID,
-			Title:  data["title"],
-			Tags:   tags,
-			Score:  Score,
-		}, err
-	})
+	data, err := RDB.HGetAll(ctx, key).Result()
 	if err != nil {
 		return nil, err
 	}
-	return v.(*models.ListBook), nil
+	if len(data) == 0 {
+		SetEmpty(key)
+		return &models.ListBook{
+			BookID: -1,
+		}, nil
+	}
+	var tags []string
+	err = json.Unmarshal([]byte(data["tags"]), &tags)
+	return &models.ListBook{
+		BookID: BookID,
+		Title:  data["title"],
+		Tags:   tags,
+		Score:  Score,
+	}, err
 }
 
 func SetBookSummary(List *models.ListBook) error {

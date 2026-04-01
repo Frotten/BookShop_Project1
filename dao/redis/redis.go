@@ -13,6 +13,13 @@ var RDB *redis.ClusterClient
 
 var G singleflight.Group
 
+var ctx = context.Background()
+
+const BufferTime = time.Minute * 3
+const UserTime = time.Minute * 30
+const ListTime = time.Hour * 24 * 7
+const BookTime = time.Hour * 24 * 7 * 2
+
 //func Init(cfg *settings.RedisConfig) (err error) {
 //	RDB = redis.NewClient(&redis.Options{
 //		Addr:     fmt.Sprintf("%s:%d", cfg.Host, cfg.Port),

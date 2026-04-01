@@ -2,12 +2,13 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>个人中心 - 网络书城</title>
     <link rel="stylesheet" href="/static/css/CommonStyle.css">
+    <link rel="stylesheet" href="/static/css/ProfileStyle.css">
     <link href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css" rel="stylesheet"/>
 </head>
 <body>
-
 <header class="navbar">
     <h1>
         <a href="/page/HomePage" style="color: inherit; text-decoration: none;">
@@ -25,41 +26,419 @@
         </div>
     </div>
 </header>
-
 <div class="container">
-    <h2><i class="ri-user-settings-line"></i> 个人中心</h2>
-
-    <div class="profile-card">
-        <p><strong><i class="ri-user-line"></i> 用户名：</strong> {{ .username }}</p>
+    <div class="profile-header-card" id="profileInfoCard">
+        <div class="profile-avatar">
+            <i class="ri-user-3-line"></i>
+        </div>
+        <div class="profile-info" id="profileInfoArea">
+            <div class="info-item"><i class="ri-user-line"></i> <strong>用户名：</strong> <span id="username">--</span></div>
+            <div class="info-item"><i class="ri-mail-line"></i> <strong>邮箱：</strong> <span id="email">--</span></div>
+            <div class="info-item"><i class="ri-user-smile-line"></i> <strong>性别：</strong> <span id="gender">--</span></div>
+        </div>
     </div>
-
-    <div class="profile-card">
-        <h3><i class="ri-shopping-bag-line"></i> 我的订单</h3>
-        {{ if .orders }}
-        <ul>
-            {{ range .orders }}
-            <li><i class="ri-file-list-line"></i> 订单号：{{ .ID }} - 金额：￥{{ .Amount }}</li>
-            {{ end }}
-        </ul>
-        {{ else }}
-        <p>暂无订单</p>
-        {{ end }}
+    <div class="tabs-container">
+        <button class="tab-btn active" data-tab="comments"><i class="ri-chat-1-line"></i> 我的评论</button>
+        <button class="tab-btn" data-tab="ratings"><i class="ri-star-smile-line"></i> 评分过的书</button>
+        <button class="tab-btn" data-tab="cart"><i class="ri-shopping-cart-line"></i> 购物车</button>
+        <button class="tab-btn" data-tab="orders"><i class="ri-file-list-line"></i> 我的订单</button>
+    </div>
+    <div id="dynamicPanel" class="content-panel">
+        <div class="empty-placeholder">
+            <i class="ri-chat-1-line"></i>
+            <p>加载中...</p>
+        </div>
     </div>
 </div>
-
 <script src="/static/js/CommonScript.js"></script>
 <script>
-    document.addEventListener("DOMContentLoaded", function() {
-        checkAuth().then(function(loggedIn) {
-            const authArea = document.getElementById("auth-area");
-            const guestArea = document.getElementById("guest-area");
-            if (loggedIn) {
-                authArea.style.display = "flex";
-                guestArea.style.display = "none";
+    // ======================= 接口定义与约定说明 =======================
+    // 以下所有接口均需后端实现，前端已预留调用逻辑
+    //
+    // 1. 获取当前登录用户信息
+    //    GET /api/user/info
+    //    响应格式: { code: 1000, data: { username: "string", email: "string", gender: "male/female/other" } }
+    //
+    // 2. 我的评论列表
+    //    GET /api/user/comments
+    //    响应格式: { code: 1000, data: [ { comment_id: number, book_id: number, book_title: string, content: string, created_at: "2024-01-01 12:00:00" } ] }
+    //
+    // 3. 我评分过的书籍列表
+    //    GET /api/user/ratings
+    //    响应格式: { code: 1000, data: [ { rating_id: number, book_id: number, book_title: string, score: number(0-100), comment?: string, created_at: string } ] }
+    //    注意: score为整数，展示时需除以100显示分数，例如85分展示为8.5分
+    //
+    // 4. 我的订单列表
+    //    GET /api/user/orders
+    //    响应格式: { code: 1000, data: [ { order_id: string, total_amount: number(单位:分), status: string, created_at: string } ] }
+    //    状态枚举: pending(待付款), paid(已付款), shipped(已发货), completed(已完成), cancelled(已取消)
+    //
+    // 5. 购物车接口 (已存在于 CommonScript.js)
+    //    GET /api/cart  返回 { code:1000, data: [ { book_id, title, price, quantity, stock, cover_image } ] }
+    //    DELETE /api/cart/:bookId 删除购物车项
+    //    PUT /api/cart 更新数量 (body: { book_id, quantity })
+    // ================================================================
+
+    // 全局标记当前激活的选项卡
+    let currentTab = 'comments';
+
+    // ---------- 辅助函数 ----------
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    // 格式化日期 (简单处理)
+    function formatDate(dateStr) {
+        if (!dateStr) return '未知时间';
+        try {
+            const date = new Date(dateStr);
+            return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')} ${String(date.getHours()).padStart(2,'0')}:${String(date.getMinutes()).padStart(2,'0')}`;
+        } catch(e) {
+            return dateStr;
+        }
+    }
+
+    // 根据分数显示星星 (满分100)
+    function renderStars(score) {
+        const starValue = score / 20; // 满分5星
+        const fullStars = Math.floor(starValue);
+        const halfStar = (starValue % 1) >= 0.5;
+        let starsHtml = '';
+        for(let i=0; i<fullStars; i++) starsHtml += '<i class="ri-star-fill"></i>';
+        if(halfStar) starsHtml += '<i class="ri-star-half-fill"></i>';
+        while(starsHtml.length/24 < 5) starsHtml += '<i class="ri-star-line"></i>';
+        return `<span class="score-stars">${starsHtml}</span> <span style="font-weight:600;">${(score/100).toFixed(2)}分</span>`;
+    }
+
+    // 获取当前用户信息并渲染
+    async function loadUserProfile() {
+        try {
+            const response = await apiFetch('/api/userInfo', { method: 'GET' });
+            const result = await response.json();
+            if (result.code === 1000 && result.data) {
+                document.getElementById('username').innerText = escapeHtml(result.data.username) || '未设置';
+                document.getElementById('email').innerText = escapeHtml(result.data.email) || '未设置';
+                let genderText = '';
+                if (result.data.gender === 'male') genderText = '男';
+                else if (result.data.gender === 'female') genderText = '女';
+                else genderText = result.data.gender || '未填写';
+                document.getElementById('gender').innerText = genderText;
             } else {
-                authArea.style.display = "none";
-                guestArea.style.display = "flex";
+                // token可能失效, 让checkAuth处理重定向
+                console.warn('获取用户信息失败', result.msg);
+                throw new Error('获取用户信息失败');
             }
+        } catch (res) {
+            console.error('加载用户信息出错:', res);
+            document.getElementById('username').innerText = '加载失败';
+            document.getElementById('email').innerText = '加载失败';
+            document.getElementById('gender').innerText = '加载失败';
+        }
+    }
+
+    // 通用加载器，显示加载状态
+    function setPanelLoading(show = true) {
+        const panel = document.getElementById('dynamicPanel');
+        if (show) {
+            panel.innerHTML = `<div class="empty-placeholder"><i class="ri-loader-4-line ri-spin"></i><p>加载中...</p></div>`;
+        }
+    }
+
+    // ========== 各个模块内容渲染 ==========
+    // 我的评论
+    async function loadMyComments() {
+        setPanelLoading(true);
+        try {
+            const res = await apiFetch('/api/user/comments', { method: 'GET' });
+            const result = await res.json();
+            if (result.code === 1000) {
+                const comments = result.data || [];
+                renderCommentsList(comments);
+            } else {
+                throw new Error(result.msg || '加载评论失败');
+            }
+        } catch (res) {
+            console.error(res);
+            document.getElementById('dynamicPanel').innerHTML = `<div class="empty-placeholder"><i class="ri-error-warning-line"></i><p>加载失败，请稍后重试</p><button onclick="loadMyComments()" style="margin-top:1rem;">重试</button></div>`;
+        }
+    }
+
+    function renderCommentsList(comments) {
+        const panel = document.getElementById('dynamicPanel');
+        if (!comments.length) {
+            panel.innerHTML = `<div class="empty-placeholder"><i class="ri-chat-1-line"></i><p>暂无评论，去逛逛书籍写下你的评价吧~</p><a href="/page/HomePage"><button style="margin-top:1rem;"><i class="ri-book-shelf-line"></i> 去逛逛</button></a></div>`;
+            return;
+        }
+        let html = `<div style="margin-bottom:0.5rem;"><strong>📝 我的评论 (${comments.length})</strong></div>`;
+        comments.forEach(cmt => {
+            html += `
+                <div class="comment-item">
+                    <div class="item-header">
+                        <span class="book-title" data-book-id="${cmt.book_id}" onclick="gotoBookDetail(${cmt.book_id})">📖 ${escapeHtml(cmt.book_title)}</span>
+                        <span class="meta-text">${formatDate(cmt.created_at)}</span>
+                    </div>
+                    <div class="content-text">${escapeHtml(cmt.content)}</div>
+                </div>
+            `;
+        });
+        panel.innerHTML = html;
+    }
+
+    // 评分过的书
+    async function loadMyRatings() {
+        setPanelLoading(true);
+        try {
+            const res = await apiFetch('/api/user/ratings', { method: 'GET' });
+            const result = await res.json();
+            if (result.code === 1000) {
+                const ratings = result.data || [];
+                renderRatingsList(ratings);
+            } else {
+                throw new Error(result.msg || '加载评分记录失败');
+            }
+        } catch (res) {
+            console.error(res);
+            document.getElementById('dynamicPanel').innerHTML = `<div class="empty-placeholder"><i class="ri-error-warning-line"></i><p>加载失败，请稍后重试</p><button onclick="loadMyRatings()" style="margin-top:1rem;">重试</button></div>`;
+        }
+    }
+
+    function renderRatingsList(ratings) {
+        const panel = document.getElementById('dynamicPanel');
+        if (!ratings.length) {
+            panel.innerHTML = `<div class="empty-placeholder"><i class="ri-star-smile-line"></i><p>还没有评分过的书籍，去发现好书吧~</p><a href="/page/HomePage"><button style="margin-top:1rem;"><i class="ri-book-shelf-line"></i> 浏览书籍</button></a></div>`;
+            return;
+        }
+        let html = `<div style="margin-bottom:0.5rem;"><strong>⭐ 我评分的书籍 (${ratings.length})</strong></div>`;
+        ratings.forEach(r => {
+            const scoreNum = r.score;
+            html += `
+                <div class="rating-item">
+                    <div class="item-header">
+                        <span class="book-title" data-book-id="${r.book_id}" onclick="gotoBookDetail(${r.book_id})">📘 ${escapeHtml(r.book_title)}</span>
+                        <span class="meta-text">${renderStars(scoreNum)}</span>
+                    </div>
+                    ${r.comment ? `<div class="content-text">💬 ${escapeHtml(r.comment)}</div>` : ''}
+                    <div class="meta-text" style="font-size:0.75rem;">评价于 ${formatDate(r.created_at)}</div>
+                </div>
+            `;
+        });
+        panel.innerHTML = html;
+    }
+
+    // 购物车 (复用已有getCart，但需要渲染自定义简洁列表)
+    async function loadMyCart() {
+        setPanelLoading(true);
+        try {
+            const cartItems = await getCart();  // getCart 定义在 CommonScript.js 中, 返回数组
+            renderCartList(cartItems);
+        } catch (res) {
+            console.error('获取购物车失败:', res);
+            let errMsg = res.message || '加载购物车失败';
+            if (errMsg === '请先登录') {
+                document.getElementById('dynamicPanel').innerHTML = `<div class="empty-placeholder"><i class="ri-lock-line"></i><p>请先登录后查看购物车</p><a href="/page/LoginPage"><button>去登录</button></a></div>`;
+            } else {
+                document.getElementById('dynamicPanel').innerHTML = `<div class="empty-placeholder"><i class="ri-error-warning-line"></i><p>${escapeHtml(errMsg)}</p><button onclick="loadMyCart()">重试</button></div>`;
+            }
+        }
+    }
+
+    async function renderCartList(items) {
+        const panel = document.getElementById('dynamicPanel');
+        if (!items || items.length === 0) {
+            panel.innerHTML = `<div class="empty-placeholder"><i class="ri-shopping-cart-line"></i><p>购物车空空如也，快去添加喜欢的书籍吧~</p><a href="/page/HomePage"><button style="margin-top:1rem;"><i class="ri-add-line"></i> 去购物</button></a></div>`;
+            return;
+        }
+        let totalPrice = 0;
+        let html = `<div style="margin-bottom:1rem;"><strong>🛒 购物车商品 (${items.length})</strong></div>`;
+        for (const item of items) {
+            const priceYuan = (item.price / 100).toFixed(2);
+            const subtotal = (item.price * item.quantity / 100).toFixed(2);
+            totalPrice += parseFloat(subtotal);
+            html += `
+                <div class="cart-item-simple" data-book-id="${item.book_id}">
+                    <div class="item-header">
+                        <span class="book-title" data-book-id="${item.book_id}" onclick="gotoBookDetail(${item.book_id})">📚 ${escapeHtml(item.title)}</span>
+                        <span class="meta-text">单价: ￥${priceYuan}  × ${item.quantity}</span>
+                    </div>
+                    <div class="content-text">
+                        小计: <span class="price-amount">￥${subtotal}</span>
+                        ${item.stock ? `<span style="margin-left:1rem;font-size:0.75rem;">库存: ${item.stock}</span>` : ''}
+                    </div>
+                    <div class="cart-actions">
+                        <button class="small-link" onclick="updateCartQuantity(${item.book_id}, ${item.quantity - 1})"><i class="ri-subtract-line"></i> 减一</button>
+                        <button class="small-link" onclick="updateCartQuantity(${item.book_id}, ${item.quantity + 1})"><i class="ri-add-line"></i> 加一</button>
+                        <button class="small-link" onclick="removeCartItem(${item.book_id})"><i class="ri-delete-bin-line"></i> 删除</button>
+                    </div>
+                </div>
+            `;
+        }
+        html += `<div style="margin-top:1.5rem; text-align:right; border-top:1px solid var(--gray-200); padding-top:1rem;">
+                    <strong>总计：<span class="price-amount" style="font-size:1.3rem;">￥${totalPrice.toFixed(2)}</span></strong>
+                    <div style="margin-top:0.8rem;"><button onclick="window.location.href='/page/CartPage'" style="background: var(--primary);">前往购物车详细结算</button></div>
+                </div>`;
+        panel.innerHTML = html;
+    }
+
+    // 更新购物车数量 (调用 CommonScript 中的 updateCartItem)
+    async function updateCartQuantity(bookId, newQuantity) {
+        if (newQuantity <= 0) {
+            await removeCartItem(bookId);
+            return;
+        }
+        const success = await updateCartItem(bookId, newQuantity);  // 来自 CommonScript
+        if (success) {
+            showSuccessToast('数量已更新');
+            await loadMyCart(); // 刷新购物车面板
+        } else {
+            alert('更新失败，请重试');
+        }
+    }
+
+    async function removeCartItem(bookId) {
+        const success = await removeFromCart(bookId); // 来自 CommonScript
+        if (success) {
+            await loadMyCart();
+        } else {
+            alert('删除失败');
+        }
+    }
+
+    // 我的订单
+    async function loadMyOrders() {
+        setPanelLoading(true);
+        try {
+            const res = await apiFetch('/api/user/orders', { method: 'GET' });
+            const result = await res.json();
+            if (result.code === 1000) {
+                const orders = result.data || [];
+                renderOrdersList(orders);
+            } else {
+                throw new Error(result.msg || '获取订单失败');
+            }
+        } catch (res) {
+            console.error(res);
+            document.getElementById('dynamicPanel').innerHTML = `<div class="empty-placeholder"><i class="ri-error-warning-line"></i><p>加载失败，请稍后重试</p><button onclick="loadMyOrders()">重试</button></div>`;
+        }
+    }
+
+    function renderOrdersList(orders) {
+        const panel = document.getElementById('dynamicPanel');
+        if (!orders.length) {
+            panel.innerHTML = `<div class="empty-placeholder"><i class="ri-receipt-line"></i><p>暂无订单，去逛逛心仪的书籍吧~</p><a href="/page/HomePage"><button>去首页</button></a></div>`;
+            return;
+        }
+        let html = `<div style="margin-bottom:1rem;"><strong>📦 历史订单 (${orders.length})</strong></div>`;
+        orders.forEach(order => {
+            let statusClass = '';
+            let statusText = '';
+            switch(order.status) {
+                case 'pending': statusText = '待付款'; statusClass = ''; break;
+                case 'paid': statusText = '已付款'; statusClass = 'paid'; break;
+                case 'shipped': statusText = '已发货'; statusClass = 'shipped'; break;
+                case 'completed': statusText = '已完成'; statusClass = 'completed'; break;
+                case 'cancelled': statusText = '已取消'; statusClass = ''; break;
+                default: statusText = order.status;
+            }
+            const amountYuan = (order.total_amount / 100).toFixed(2);
+            html += `
+                <div class="order-item">
+                    <div class="item-header">
+                        <span><strong>订单号：</strong>${escapeHtml(order.order_id)}</span>
+                        <span class="order-status ${statusClass}">${statusText}</span>
+                    </div>
+                    <div class="content-text">
+                        金额：<span class="price-amount">￥${amountYuan}</span>
+                        <span style="margin-left:1rem;">下单时间：${formatDate(order.created_at)}</span>
+                    </div>
+                </div>
+            `;
+        });
+        panel.innerHTML = html;
+    }
+
+    // 统一根据当前选项卡加载内容
+    async function loadCurrentTab() {
+        switch(currentTab) {
+            case 'comments':
+                await loadMyComments();
+                break;
+            case 'ratings':
+                await loadMyRatings();
+                break;
+            case 'cart':
+                await loadMyCart();
+                break;
+            case 'orders':
+                await loadMyOrders();
+                break;
+            default:
+                loadMyComments();
+        }
+    }
+
+    // 切换选项卡
+    function switchTab(tabId) {
+        currentTab = tabId;
+        // 更新按钮样式
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            if (btn.dataset.tab === tabId) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+        loadCurrentTab();
+    }
+
+    // 书籍详情跳转
+    window.gotoBookDetail = function(bookId) {
+        if (bookId) {
+            window.location.href = `/page/BooksPage?book_id=${bookId}`;
+        }
+    };
+
+    // 暴露一些全局函数以便 onclick 调用
+    window.updateCartQuantity = updateCartQuantity;
+    window.removeCartItem = removeCartItem;
+    window.loadMyCart = loadMyCart;
+    window.loadMyComments = loadMyComments;
+    window.loadMyRatings = loadMyRatings;
+    window.loadMyOrders = loadMyOrders;
+
+    // ---------- 页面初始化 ----------
+    document.addEventListener("DOMContentLoaded", async function() {
+        // 1. 先验证登录状态，未登录则跳转登录页
+        const isLogged = await checkAuth();  // CommonScript 中已有
+        const authArea = document.getElementById("auth-area");
+        const guestArea = document.getElementById("guest-area");
+        if (isLogged) {
+            authArea.style.display = "flex";
+            guestArea.style.display = "none";
+            // 加载用户个人信息
+            await loadUserProfile();
+            // 默认加载第一个选项卡 (我的评论)
+            switchTab('comments');
+        } else {
+            // 未登录或 token 无效，跳转登录页
+            authArea.style.display = "none";
+            guestArea.style.display = "flex";
+            alert("请先登录后访问个人中心");
+            window.location.href = "/page/LoginPage";
+            return;
+        }
+
+        // 绑定选项卡点击事件
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                const tab = this.dataset.tab;
+                if (tab) switchTab(tab);
+            });
         });
     });
 </script>

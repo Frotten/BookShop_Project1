@@ -100,9 +100,9 @@
             } else {
                 alert('获取图书列表失败：' + result.msg);
             }
-        } catch (err) {
-            console.error(err);
-            alert('请求失败，请稍后重试:' + err);
+        } catch (res) {
+            console.error(res);
+            alert('请求失败，请稍后重试:' + res);
         }
     }
 
@@ -183,8 +183,8 @@
                 data = await fetchScoreRanking();
             }
             renderRanking(data, type);
-        } catch (err) {
-            console.error(err);
+        } catch (res) {
+            console.error(res);
             listEl.innerHTML = `<div class="loading-tip">加载失败，请稍后重试</div>`;
         }
     }

@@ -2,33 +2,32 @@ package logic
 
 import (
 	"Project1_Shop/dao/mysql"
+	"Project1_Shop/dao/redis"
 	"Project1_Shop/models"
-
-	"go.uber.org/zap"
+	"strconv"
 )
 
 func SignUp(p *models.ParamSignUp) models.ResCode {
-	ok, err := mysql.CheckUserExist(p.Username) //查询用户名合法性（不能是已存在昵称，也不能是别人的邮箱）
+	ok, res := mysql.CheckUserExist(p.Username) //查询用户名合法性（不能是已存在昵称，也不能是别人的邮箱）
 	if ok == false {
-		if err != models.CodeUserExist {
-			zap.L().Error("logic.SignUp failed")
+		if res != models.CodeUserExist {
 			return models.CodeServerBusy
 		}
-		zap.L().Error("logic.SignUp failed")
 		return models.CodeUserExist
 	}
-	ok, err = mysql.CheckUserExist(p.Email) //查询邮箱合法性（不能是已存在昵称，也不能是别人的邮箱）
+	ok, res = mysql.CheckUserExist(p.Email) //查询邮箱合法性（不能是已存在昵称，也不能是别人的邮箱）
 	if ok == false {
-		if err != models.CodeUserExist {
-			zap.L().Error("logic.SignUp failed")
+		if res != models.CodeUserExist {
 			return models.CodeServerBusy
 		}
-		zap.L().Error("logic.SignUp failed")
 		return models.CodeUserExist
 	}
-	err = mysql.InsertUser(p)
-	if err != models.CodeSuccess {
-		zap.L().Error("mysql.InsertUser(p) failed")
+	User, res := mysql.InsertUser(p)
+	if res != models.CodeSuccess || User.UserID <= 0 {
+		return models.CodeServerBusy
+	}
+	err := redis.InsertUser(&User)
+	if err != nil {
 		return models.CodeServerBusy
 	}
 	return models.CodeSuccess
@@ -37,7 +36,6 @@ func SignUp(p *models.ParamSignUp) models.ResCode {
 func Login(p *models.ParamLogin) (*models.User, models.ResCode) {
 	User, code := mysql.CheckUserLogin(p)
 	if code != models.CodeSuccess {
-		zap.L().Error("logic.Login failed")
 		return nil, code
 	}
 	return User, models.CodeSuccess
@@ -47,15 +45,12 @@ func AdminRegister(p *models.Admin) models.ResCode {
 	ok, err := mysql.CheckAdminExist(p.Username) //查询用户名合法性（不能是已存在昵称，也不能是别人的邮箱）
 	if ok == false {
 		if err != models.CodeUserExist {
-			zap.L().Error("logic.AdminRegister failed")
 			return models.CodeServerBusy
 		}
-		zap.L().Error("logic.AdminRegister failed")
 		return models.CodeUserExist
 	}
 	err = mysql.InsertAdmin(p)
 	if err != models.CodeSuccess {
-		zap.L().Error("mysql.InsertAdmin(p) failed")
 		return models.CodeServerBusy
 	}
 	return models.CodeSuccess
@@ -64,8 +59,35 @@ func AdminRegister(p *models.Admin) models.ResCode {
 func AdminLogin(p *models.Admin) models.ResCode {
 	err := mysql.AdminLogin(p)
 	if err != models.CodeSuccess {
-		zap.L().Error("logic.AdminLogin failed")
 		return err
 	}
 	return models.CodeSuccess
+}
+
+func GetUserInfo(UserID int64) (*models.UserView, models.ResCode) {
+	UserIDStr := strconv.FormatInt(UserID, 10)
+	z, err, _ := redis.G.Do(UserIDStr, func() (interface{}, error) {
+		View, err := redis.GetUserInfo(UserID)
+		if err == nil {
+			return View, models.CodeSuccess
+		}
+		User, err := mysql.GetUserInfo(UserID)
+		if err != nil {
+			return nil, models.CodeServerBusy
+		}
+		err = redis.InsertUser(User)
+		if err != nil {
+			return nil, models.CodeServerBusy
+		}
+		return &models.UserView{
+			UserID:   User.UserID,
+			Username: User.Username,
+			Email:    User.Email,
+			Gender:   User.Gender,
+		}, nil
+	})
+	if err != nil {
+		return nil, models.CodeServerBusy
+	}
+	return z.(*models.UserView), models.CodeSuccess
 }

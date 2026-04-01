@@ -60,7 +60,7 @@
             }
             currentBook = result.data;
             renderBook(currentBook);
-        } catch (err) {
+        } catch (res) {
             alert("请求失败");
         }
     }
@@ -117,7 +117,7 @@
             } else {
                 alert("删除失败：" + result.msg);
             }
-        } catch (err) {
+        } catch (res) {
             alert("请求失败");
         }
     }

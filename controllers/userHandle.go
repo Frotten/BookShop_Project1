@@ -49,15 +49,13 @@ func LoginHandler(c *gin.Context) {
 		HandleResponse(c, models.CodeServerBusy)
 		return
 	}
-	refreshToken, tokenHash, err := jwt.GenerateRefreshToken()
+	refreshToken, userTokenHash, err := jwt.GenerateRefreshToken()
 	if err != nil {
 		zap.L().Error("jwt.GenerateRefreshToken failed", zap.Error(err))
 		HandleResponse(c, models.CodeServerBusy)
 		return
 	}
-
-	redis.RDB.Set(c, "auth:refresh:"+tokenHash, User.UserID, jwt.TokenExpireDuration)
-
+	redis.RDB.Set(c, "auth:refresh:"+userTokenHash, User.UserID, jwt.TokenExpireDuration)
 	c.SetCookie(
 		"refresh_token",
 		refreshToken,
@@ -96,4 +94,20 @@ func RefreshHandler(c *gin.Context) {
 	HandleSuccess(c, gin.H{
 		"access_token": newAccess,
 	})
+}
+
+func GetUserInfoHandle(c *gin.Context) {
+	UserID, ok := c.Get("userID")
+	if !ok || UserID == nil {
+		zap.L().Error("GetUserInfoHandle failed: UserID not found in context")
+		HandleResponse(c, models.CodeServerBusy)
+		return
+	}
+	UserInfo, res := logic.GetUserInfo(UserID.(int64))
+	if res != models.CodeSuccess {
+		zap.L().Error("GetUserInfoHandle failed")
+		HandleResponse(c, res)
+		return
+	}
+	HandleSuccess(c, UserInfo)
 }

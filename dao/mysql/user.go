@@ -31,7 +31,7 @@ func CheckUserLogin(p *models.ParamLogin) (*models.User, models.ResCode) {
 	return &u, models.CodeSuccess
 }
 
-func InsertUser(p *models.ParamSignUp) models.ResCode {
+func InsertUser(p *models.ParamSignUp) (models.User, models.ResCode) {
 	var u models.User
 	u.Username = p.Username
 	u.Password = md5.Md5(p.Password)
@@ -39,9 +39,9 @@ func InsertUser(p *models.ParamSignUp) models.ResCode {
 	u.Gender = p.Gender
 	result := DB.Create(&u)
 	if result.Error != nil {
-		return models.CodeServerBusy
+		return models.User{}, models.CodeServerBusy
 	}
-	return models.CodeSuccess
+	return u, models.CodeSuccess
 }
 
 func CheckAdminExist(account string) (bool, models.ResCode) {
@@ -74,4 +74,13 @@ func AdminLogin(p *models.Admin) models.ResCode {
 		return models.CodeUserNotExist
 	}
 	return models.CodeSuccess
+}
+
+func GetUserInfo(UserID int64) (*models.User, error) {
+	var u *models.User
+	result := DB.First(u, UserID)
+	if result.RowsAffected == 0 {
+		return nil, result.Error
+	}
+	return u, result.Error
 }
