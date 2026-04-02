@@ -56,22 +56,34 @@
     // 以下所有接口均需后端实现，前端已预留调用逻辑
     //
     // 1. 获取当前登录用户信息
-    //    GET /api/user/info
-    //    响应格式: { code: 1000, data: { username: "string", email: "string", gender: "male/female/other" } }
+    //    GET /api/userInfo
+    //    响应格式：{ code: 1000, data: { username: "string", email: "string", gender: "male/female/other" } }
     //
     // 2. 我的评论列表
-    //    GET /api/user/comments
-    //    响应格式: { code: 1000, data: [ { comment_id: number, book_id: number, book_title: string, content: string, created_at: "2024-01-01 12:00:00" } ] }
+    //    GET /api/userComments
+    //    响应格式：{ code: 1000, data: [ {
+    //        comment_id: number,
+    //        book_id: number,
+    //        username: string,
+    //        parent_id: number,
+    //        root_id: number,
+    //        like_count: number,
+    //        reply_count: number,
+    //        status: number,
+    //        comment: string,
+    //        comment_time: "2024-01-01 12:00:00"
+    //    } ] }
+    //    注意：comment 字段为评论内容，status=1 表示正常，2=删除，3=审核中
     //
     // 3. 我评分过的书籍列表
     //    GET /api/user/ratings
-    //    响应格式: { code: 1000, data: [ { rating_id: number, book_id: number, book_title: string, score: number(0-100), comment?: string, created_at: string } ] }
-    //    注意: score为整数，展示时需除以100显示分数，例如85分展示为8.5分
+    //    响应格式：{ code: 1000, data: [ { rating_id: number, book_id: number, book_title: string, score: number(0-100), comment?: string, created_at: string } ] }
+    //    注意：score 为整数，展示时需除以 100 显示分数，例如 85 分展示为 8.5 分
     //
     // 4. 我的订单列表
     //    GET /api/user/orders
-    //    响应格式: { code: 1000, data: [ { order_id: string, total_amount: number(单位:分), status: string, created_at: string } ] }
-    //    状态枚举: pending(待付款), paid(已付款), shipped(已发货), completed(已完成), cancelled(已取消)
+    //    响应格式：{ code: 1000, data: [ { order_id: string, total_amount: number(单位：分), status: string, created_at: string } ] }
+    //    状态枚举：pending(待付款), paid(已付款), shipped(已发货), completed(已完成), cancelled(已取消)
     //
     // 5. 购物车接口 (已存在于 CommonScript.js)
     //    GET /api/cart  返回 { code:1000, data: [ { book_id, title, price, quantity, stock, cover_image } ] }
@@ -155,7 +167,7 @@
     async function loadMyComments() {
         setPanelLoading(true);
         try {
-            const res = await apiFetch('/api/user/comments', { method: 'GET' });
+            const res = await apiFetch('/api/userComments', { method: 'GET' });
             const result = await res.json();
             if (result.code === 1000) {
                 const comments = result.data || [];
@@ -177,13 +189,28 @@
         }
         let html = `<div style="margin-bottom:0.5rem;"><strong>📝 我的评论 (${comments.length})</strong></div>`;
         comments.forEach(cmt => {
+            // 根据 CommentBook 结构，使用正确的字段名
+            const commentContent = cmt.comment || '';
+            const commentTime = cmt.comment_time || '';
+            const bookID = cmt.book_id;
+
+            // 如果是被删除的评论，显示特殊样式
+            const isDeleted = cmt.status === 2;
+            const contentDisplay = isDeleted ? '<span style="color:#94a3b8;font-style:italic;">[该评论已被删除]</span>' : escapeHtml(commentContent);
+
             html += `
                 <div class="comment-item">
                     <div class="item-header">
-                        <span class="book-title" data-book-id="${cmt.book_id}" onclick="gotoBookDetail(${cmt.book_id})">📖 ${escapeHtml(cmt.book_title)}</span>
-                        <span class="meta-text">${formatDate(cmt.created_at)}</span>
+                        <span class="book-title" data-book-id="${bookID}" onclick="gotoBookDetail(${bookID})">📖 ${escapeHtml(cmt.book_title || '未知书籍')}</span>
+                        <span class="meta-text">${formatDate(commentTime)}</span>
                     </div>
-                    <div class="content-text">${escapeHtml(cmt.content)}</div>
+                    <div class="content-text">${contentDisplay}</div>
+                    ${!isDeleted && (cmt.like_count > 0 || cmt.reply_count > 0) ? `
+                    <div class="comment-stats" style="font-size:0.75rem;color:#64748b;margin-top:0.5rem;">
+                        <span style="margin-right:1rem;"><i class="ri-thumb-up-line"></i> ${cmt.like_count || 0}</span>
+                        <span><i class="ri-reply-line"></i> ${cmt.reply_count || 0}</span>
+                    </div>
+                    ` : ''}
                 </div>
             `;
         });

@@ -5,6 +5,7 @@ import (
 	"Project1_Shop/logic"
 	"Project1_Shop/models"
 	"Project1_Shop/pkg/jwt"
+	"fmt"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -109,5 +110,28 @@ func GetUserInfoHandle(c *gin.Context) {
 		HandleResponse(c, res)
 		return
 	}
+	fmt.Println("GetUserInfoHandle success, UserInfo:", UserInfo)
 	HandleSuccess(c, UserInfo)
+}
+
+func GetUserCommentsHandle(c *gin.Context) {
+	UserID, ok := c.Get("userID")
+	if !ok || UserID == nil {
+		zap.L().Error("GetUserCommentsHandle failed: UserID not found in context")
+		HandleResponse(c, models.CodeServerBusy)
+		return
+	}
+	UserName, ok := c.Get("username")
+	if !ok || UserName == nil {
+		zap.L().Error("GetUserCommentsHandle failed: UserName not found in context")
+		HandleResponse(c, models.CodeServerBusy)
+		return
+	}
+	Comments, res := logic.GetCommentsByUser(UserID.(int64), UserName.(string))
+	if res != models.CodeSuccess {
+		zap.L().Error("GetUserCommentsHandle failed")
+		HandleResponse(c, res)
+		return
+	}
+	HandleSuccess(c, Comments)
 }

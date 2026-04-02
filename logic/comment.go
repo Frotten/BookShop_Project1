@@ -4,28 +4,53 @@ import (
 	"Project1_Shop/dao/mysql"
 	"Project1_Shop/dao/redis"
 	"Project1_Shop/models"
+	"strconv"
 )
 
-// GetCommentsByBookID 获取评论列表：优先 Redis，未命中回落 MySQL，并写入 Redis
-func GetCommentsByBookID(bookID int64) ([]models.CommentView, models.ResCode) {
+func GetCommentsByBookID(bookID int64) ([]*models.CommentBook, models.ResCode) {
 	if bookID <= 0 {
 		return nil, models.CodeInvalidParam
 	}
-	// 1) Redis 优先
-	if cached, ok, err := redis.GetCommentsFromCache(bookID); err == nil && ok {
-		return cached, models.CodeSuccess
-	}
-	// 2) MySQL 回落
-	list, err := mysql.GetCommentsByBookID(bookID)
+	z, err, _ := redis.G.Do(strconv.FormatInt(bookID, 10), func() (interface{}, error) {
+		ids, err := redis.GetCommentIDsByBookID(bookID)
+		if err != nil || len(ids) == 0 {
+			dbList, err := mysql.GetCommentsByBookID(bookID)
+			if err != nil {
+				return nil, err
+			}
+			for _, c := range dbList {
+				_ = redis.SetCommentsToCache(c)
+				UserView, _ := GetUserInfo(c.UserID)
+				c.Username = UserView.Username
+			}
+			return dbList, err
+		}
+		list, missIDs, err := redis.MGetComments(ids)
+		if err != nil {
+			return nil, err
+		}
+		if len(missIDs) > 0 {
+			dbList, err := mysql.GetCommentsByIDs(missIDs)
+			if err != nil {
+				return nil, err
+			}
+			list = append(list, dbList...)
+			for _, c := range dbList {
+				_ = redis.SetCommentsToCache(c)
+			}
+		}
+		for _, c := range list {
+			UserView, _ := GetUserInfo(c.UserID)
+			c.Username = UserView.Username
+		}
+		return list, err
+	})
 	if err != nil {
-		return nil, models.CodeMySQLError
+		return nil, models.CodeServerBusy
 	}
-	// 3) 写入 Redis（忽略写入失败，避免影响主链路）
-	_ = redis.SetCommentsToCache(bookID, list)
-	return list, models.CodeSuccess
+	return z.([]*models.CommentBook), models.CodeSuccess
 }
 
-// LikeComment 点赞：更新 MySQL，然后失效 Redis
 func LikeComment(commentID int64) models.ResCode {
 	bookID, err := mysql.LikeComment(commentID)
 	if err != nil {
@@ -41,4 +66,50 @@ func CommentBook(p *models.CommentBook) models.ResCode {
 	}
 	_ = redis.DelCommentsCache(p.BookID)
 	return models.CodeSuccess
+}
+
+func GetCommentsByUser(UserID int64, UserName string) ([]*models.CommentBook, models.ResCode) {
+	z, err, _ := redis.G.Do(strconv.FormatInt(UserID, 10), func() (interface{}, error) {
+		ids, err := redis.GetCommentIDsByUserID(UserID)
+		if err != nil {
+			res, err := mysql.GetCommentsByUserID(UserID)
+			if err != nil {
+				return nil, err
+			}
+			for _, c := range res {
+				_ = redis.SetCommentsToCache(c)
+				c.Username = UserName
+			}
+			return res, err
+		}
+		if len(ids) == 0 {
+			return nil, err
+		}
+		list, missIDs, err := redis.MGetComments(ids)
+		if err != nil {
+			return nil, err
+		}
+		if len(missIDs) > 0 {
+			dbList, err := mysql.GetCommentsByIDs(missIDs)
+			if err != nil {
+				return nil, err
+			}
+			for _, c := range dbList {
+				_ = redis.SetCommentsToCache(c)
+				list = append(list, c)
+			}
+		}
+		var res []*models.CommentBook
+		for _, c := range list {
+			res = append(res, c)
+		}
+		for _, c := range res {
+			c.Username = UserName
+		}
+		return res, err
+	})
+	if err != nil {
+		return nil, models.CodeServerBusy
+	}
+	return z.([]*models.CommentBook), models.CodeSuccess
 }

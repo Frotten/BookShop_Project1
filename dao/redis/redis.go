@@ -18,6 +18,7 @@ var ctx = context.Background()
 const BufferTime = time.Minute * 3
 const UserTime = time.Minute * 30
 const ListTime = time.Hour * 24 * 7
+const CommentListTime = time.Minute * 15
 const BookTime = time.Hour * 24 * 7 * 2
 
 //func Init(cfg *settings.RedisConfig) (err error) {

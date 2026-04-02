@@ -69,15 +69,15 @@ func GetUserInfo(UserID int64) (*models.UserView, models.ResCode) {
 	z, err, _ := redis.G.Do(UserIDStr, func() (interface{}, error) {
 		View, err := redis.GetUserInfo(UserID)
 		if err == nil {
-			return View, models.CodeSuccess
+			return View, err
 		}
 		User, err := mysql.GetUserInfo(UserID)
 		if err != nil {
-			return nil, models.CodeServerBusy
+			return nil, err
 		}
 		err = redis.InsertUser(User)
 		if err != nil {
-			return nil, models.CodeServerBusy
+			return nil, err
 		}
 		return &models.UserView{
 			UserID:   User.UserID,

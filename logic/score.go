@@ -4,6 +4,7 @@ import (
 	"Project1_Shop/dao/mysql"
 	"Project1_Shop/dao/redis"
 	"Project1_Shop/models"
+	"fmt"
 	"strconv"
 
 	"go.uber.org/zap"
@@ -36,7 +37,7 @@ func NewScoreAndRank(UserID, BookID, Score int64) error {
 		return err
 	}
 	BookCache := BookToCache(NewBook)
-	err = redis.SetBookCache(BookCache, int64(AnsScore)*100)
+	err = redis.SetBookCache(BookCache, int64(AnsScore*100))
 	if err != nil {
 		return err
 	}
@@ -185,7 +186,7 @@ func GetTopScoreList() ([]*models.ListBook, models.ResCode) {
 			zap.L().Error("unexpected member type", zap.Any("value", v))
 			continue
 		}
-		Score := int64(z.Score)
+		Score := int64(z.Score * 100)
 		T, err := redis.GetBookSummaryByBookID(BookID, Score)
 		if err != nil {
 			continue
@@ -194,6 +195,7 @@ func GetTopScoreList() ([]*models.ListBook, models.ResCode) {
 			// 合并并发请求，只有一个会执行函数体
 			v, err, _ := redis.G.Do(strconv.FormatInt(BookID, 10), func() (interface{}, error) {
 				Book, err := mysql.GetBookByID(BookID)
+				fmt.Println("BookID:", BookID, "Score:", Score)
 				if err != nil {
 					return nil, err
 				}

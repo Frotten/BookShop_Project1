@@ -34,6 +34,7 @@ func SetUp() *gin.Engine {
 		Login := v1.Use(middlewares.JWTAuthMiddleware())
 		{
 			Login.GET("/userInfo", controllers.GetUserInfoHandle)
+			Login.GET("/userComments", controllers.GetUserCommentsHandle)
 			Login.POST("/rateBook", controllers.RateBookHandle)
 			Login.POST("/comment", controllers.CommentHandle)
 			Login.POST("/comment/like", controllers.CommentLikeHandle)
@@ -75,11 +76,6 @@ func SetUp() *gin.Engine {
 			book.DELETE("/delete/:book_id", controllers.AdminDeleteBookHandle)
 			book.POST("/update", controllers.AdminUpdateBookHandle)
 		}
-		//tags := v3.Group("/tags")
-		//{
-		//	tags.POST("/add", controllers.AdminAddTagHandle)
-		//	tags.DELETE("/delete/:tag_id", controllers.AdminDeleteTagHandle)
-		//}
 		//user := v3.Group("/user")
 		//{
 		//	user.GET("/list", controllers.AdminListUserHandle)

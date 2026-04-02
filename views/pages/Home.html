@@ -204,7 +204,7 @@
             if (type === 'sales') {
                 value = `<i class="ri-bar-chart-2-line"></i> ${item.sales || 0} 销量`;
             } else {
-                value = `<i class="ri-star-smile-line"></i> ${item.score} 分`;
+                value = `<i class="ri-star-smile-line"></i> ${(item.score / 100).toFixed(2)} 分`;
             }
             html += `
                 <div class="ranking-item" data-book-id="${item.book_id}">

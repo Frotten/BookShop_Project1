@@ -181,13 +181,19 @@
             }
         }
 
-        // 获取评论列表（后端需返回符合 CommentBook 结构的数组，并附带 user_name, user_avatar）
+        // 获取评论列表（后端返回 CommentBook 结构数组，包含 username 字段）
         async function fetchComments(bookId) {
             try {
                 const res = await apiFetch(`/api/comments?book_id=${bookId}`, { method: 'GET' });
                 const data = await res.json();
                 if (data.code === 1000 && Array.isArray(data.data)) {
                     allComments = data.data;
+                    // 为每条评论补充 user_name 字段（兼容后端返回的 username）
+                    allComments.forEach(c => {
+                        if (!c.user_name && c.username) {
+                            c.user_name = c.username;
+                        }
+                    });
                 } else {
                     allComments = [];
                 }
@@ -250,8 +256,8 @@
             if (isDeleted) statusBadge = '<span class="status-badge status-deleted">[已删除]</span>';
             else if (isPending) statusBadge = '<span class="status-badge">审核中</span>';
 
-            const userName = escapeHtml(comment.user_name || '匿名用户');
-            const avatarText = generateAvatar(comment.user_name || '?');
+            const userName = escapeHtml(comment.user_name || comment.username || '匿名用户');
+            const avatarText = generateAvatar(comment.user_name || comment.username || '?');
             const time = new Date(comment.comment_time).toLocaleString();
             const content = isDeleted ? '该评论已被删除' : escapeHtml(comment.comment);
             const contentClass = isDeleted ? 'comment-content status-deleted' : 'comment-content';
@@ -582,5 +588,3 @@
         });
     })();
 </script>
-</body>
-</html>
