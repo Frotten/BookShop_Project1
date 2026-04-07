@@ -349,13 +349,18 @@ function getCart() {
         });
 }
 
-// 更新购物车商品数量
-function updateCartItem(bookId, quantity) {
+// 更新购物车商品数量（带库存验证）
+function updateCartItem(bookId, quantity, maxStock) {
     if (quantity <= 0) {
         return removeFromCart(bookId);
     }
     
-    return apiFetch("/api/cart/", {
+    if (maxStock && quantity > maxStock) {
+        alert(`库存不足，最多可购买 ${maxStock} 件`);
+        return Promise.resolve(false);
+    }
+    
+    return apiFetch("/api/cart", {
         method: "PUT",
         credentials: "include",
         body: JSON.stringify({ 
@@ -379,7 +384,7 @@ function updateCartItem(bookId, quantity) {
     })
     .catch(error => {
         console.error("更新购物车错误:", error);
-        alert("更新失败");
+        alert("更新失败，请重试");
         return false;
     });
 }
@@ -407,7 +412,7 @@ function removeFromCart(bookId) {
     })
     .catch(error => {
         console.error("删除购物车错误:", error);
-        alert("删除失败");
+        alert("删除失败，请重试");
         return false;
     });
 }
@@ -435,59 +440,62 @@ function clearCart() {
     })
     .catch(error => {
         console.error("清空购物车错误:", error);
-        alert("清空失败");
+        alert("清空失败，请重试");
         return false;
     });
 }
 
-// 渲染购物车页面（如果有购物车页面的话）
-function renderCartPage(cartItems) {
-    const container = document.getElementById('cart-container');
-    if (!container) return;
+// 渲染购物车简化列表（用于个人中心等页面）
+function renderCartSimpleList(items, containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) {
+        console.error('容器元素不存在:', containerId);
+        return;
+    }
     
-    if (!cartItems || cartItems.length === 0) {
+    if (!items || items.length === 0) {
         container.innerHTML = `
-            <div style="text-align:center; padding:3rem;">
-                <i class="ri-shopping-cart-2-line" style="font-size:4rem; color:var(--gray-200);"></i>
-                <p style="color:var(--gray-600); margin-top:1rem;">购物车还是空的</p>
-                <a href="/page/HomePage" style="display:inline-block; margin-top:1rem;">
-                    <button><i class="ri-book-shelf-line"></i> 去逛逛</button>
+            <div class="empty-placeholder">
+                <i class="ri-shopping-cart-line"></i>
+                <p>购物车空空如也，快去添加喜欢的书籍吧~</p>
+                <a href="/page/HomePage">
+                    <button style="margin-top:1rem;">
+                        <i class="ri-add-line"></i> 去购物
+                    </button>
                 </a>
             </div>
         `;
         return;
     }
     
-    let html = '<div class="cart-items">';
-    let totalAmount = 0;
+    let totalPrice = 0;
+    let html = `<div style="margin-bottom:1rem;"><strong>🛒 购物车商品 (${items.length})</strong></div>`;
     
-    cartItems.forEach(item => {
+    items.forEach(item => {
         const priceYuan = (item.price / 100).toFixed(2);
-        const itemTotal = (item.price * item.quantity / 100).toFixed(2);
-        totalAmount += parseFloat(itemTotal);
+        const subtotal = (item.price * item.quantity / 100).toFixed(2);
+        totalPrice += parseFloat(subtotal);
         
         html += `
-            <div class="cart-item" data-book-id="${item.book_id}">
-                <div class="cart-item-cover">
-                    <img src="${item.cover_image || '/static/default-cover.png'}" alt="${item.title}">
+            <div class="cart-item-simple" data-book-id="${item.book_id}" data-stock="${item.stock || 99}">
+                <div class="item-header">
+                    <span class="book-title" data-book-id="${item.book_id}" onclick="gotoBookDetail(${item.book_id})">
+                        📚 ${escapeHtmlForDialog(item.title)}
+                    </span>
+                    <span class="meta-text">单价: ￥${priceYuan} × ${item.quantity}</span>
                 </div>
-                <div class="cart-item-info">
-                    <h3 class="cart-item-title">${escapeHtml(item.title)}</h3>
-                    <p class="cart-item-author">${escapeHtml(item.author)}</p>
-                    <div class="cart-item-price">
-                        <span class="price-label">单价：</span>
-                        <span class="price-value">￥${priceYuan}</span>
-                    </div>
-                    <div class="cart-item-quantity">
-                        <span class="qty-label">数量：</span>
-                        <button class="qty-btn" onclick="decreaseQuantity(${item.book_id})">-</button>
-                        <input type="number" value="${item.quantity}" min="1" max="${item.stock}" readonly>
-                        <button class="qty-btn" onclick="increaseQuantity(${item.book_id})">+</button>
-                    </div>
-                    <div class="cart-item-total">
-                        <span>小计：￥${itemTotal}</span>
-                    </div>
-                    <button class="remove-btn" onclick="removeFromCartClick(${item.book_id})">
+                <div class="content-text">
+                    小计: <span class="price-amount">￥${subtotal}</span>
+                    ${item.stock ? `<span style="margin-left:1rem;font-size:0.75rem;">库存: ${item.stock}</span>` : ''}
+                </div>
+                <div class="cart-actions">
+                    <button class="small-link" onclick="handleCartQuantityChange(${item.book_id}, -1)">
+                        <i class="ri-subtract-line"></i> 减一
+                    </button>
+                    <button class="small-link" onclick="handleCartQuantityChange(${item.book_id}, 1)">
+                        <i class="ri-add-line"></i> 加一
+                    </button>
+                    <button class="small-link" onclick="handleRemoveCartItem(${item.book_id})">
                         <i class="ri-delete-bin-line"></i> 删除
                     </button>
                 </div>
@@ -495,19 +503,12 @@ function renderCartPage(cartItems) {
         `;
     });
     
-    html += '</div>';
     html += `
-        <div class="cart-summary">
-            <div class="cart-total">
-                <span>总计：</span>
-                <span class="total-amount">￥${totalAmount.toFixed(2)}</span>
-            </div>
-            <div class="cart-actions">
-                <button class="clear-cart-btn" onclick="clearCartClick()">
-                    <i class="ri-delete-bin-2-line"></i> 清空购物车
-                </button>
-                <button class="checkout-btn" onclick="checkout()">
-                    <i class="ri-bank-card-line"></i> 去结算
+        <div style="margin-top:1.5rem; text-align:right; border-top:1px solid var(--gray-200); padding-top:1rem;">
+            <strong>总计：<span class="price-amount" style="font-size:1.3rem;">￥${totalPrice.toFixed(2)}</span></strong>
+            <div style="margin-top:0.8rem;">
+                <button onclick="window.location.href='/page/CartPage'" style="background: var(--primary);">
+                    前往购物车详细结算
                 </button>
             </div>
         </div>
@@ -516,85 +517,79 @@ function renderCartPage(cartItems) {
     container.innerHTML = html;
 }
 
-// 购物车事件处理函数（需要时在页面中调用）
-function decreaseQuantity(bookId) {
-    const item = document.querySelector(`.cart-item[data-book-id="${bookId}"]`);
-    if (!item) return;
+// 处理购物车数量变化（增减）
+async function handleCartQuantityChange(bookId, delta) {
+    const itemElement = document.querySelector(`.cart-item-simple[data-book-id="${bookId}"]`);
+    if (!itemElement) {
+        console.error('未找到商品元素');
+        return;
+    }
     
-    const input = item.querySelector('input[type="number"]');
-    let quantity = parseInt(input.value) - 1;
+    const stock = parseInt(itemElement.dataset.stock) || 99;
+    const metaText = itemElement.querySelector('.meta-text').textContent;
+    const currentQtyMatch = metaText.match(/×\s*(\d+)/);
+    const currentQty = currentQtyMatch ? parseInt(currentQtyMatch[1]) : 1;
     
-    if (quantity >= 1) {
-        updateCartItem(bookId, quantity).then(() => {
-            input.value = quantity;
-            updateCartTotal();
-        });
+    const newQuantity = currentQty + delta;
+    
+    if (newQuantity <= 0) {
+        if (confirm('确定要移除这件商品吗？')) {
+            await handleRemoveCartItem(bookId);
+        }
+        return;
+    }
+    
+    if (newQuantity > stock) {
+        alert(`库存不足，最多可购买 ${stock} 件`);
+        return;
+    }
+    
+    const success = await updateCartItem(bookId, newQuantity, stock);
+    if (success) {
+        showSuccessToast('数量已更新');
+        // 触发刷新事件，让调用方自行决定如何刷新
+        document.dispatchEvent(new CustomEvent('cartUpdated', { detail: { bookId, newQuantity } }));
     }
 }
 
-function increaseQuantity(bookId) {
-    const item = document.querySelector(`.cart-item[data-book-id="${bookId}"]`);
-    if (!item) return;
-    
-    const input = item.querySelector('input[type="number"]');
-    const maxStock = parseInt(input.max) || 99;
-    let quantity = parseInt(input.value) + 1;
-    
-    if (quantity <= maxStock) {
-        updateCartItem(bookId, quantity).then(() => {
-            input.value = quantity;
-            updateCartTotal();
-        });
-    } else {
-        alert("已达到库存上限");
+// 处理删除购物车商品
+async function handleRemoveCartItem(bookId) {
+    const success = await removeFromCart(bookId);
+    if (success) {
+        document.dispatchEvent(new CustomEvent('cartUpdated', { detail: { bookId, removed: true } }));
     }
 }
 
-function removeFromCartClick(bookId) {
-    if (confirm("确定要删除这件商品吗？")) {
-        removeFromCart(bookId).then(success => {
-            if (success) {
-                // 重新加载购物车或移除 DOM
-                loadCartPage();
+// 加载并渲染购物车简化列表（通用方法）
+async function loadAndRenderCartSimple(containerId) {
+    try {
+        const cartItems = await getCart();
+        renderCartSimpleList(cartItems, containerId);
+        return cartItems;
+    } catch (error) {
+        console.error('加载购物车失败:', error);
+        const container = document.getElementById(containerId);
+        if (container) {
+            if (error.message === '请先登录') {
+                container.innerHTML = `
+                    <div class="empty-placeholder">
+                        <i class="ri-lock-line"></i>
+                        <p>请先登录后查看购物车</p>
+                        <a href="/page/LoginPage">
+                            <button>去登录</button>
+                        </a>
+                    </div>
+                `;
+            } else {
+                container.innerHTML = `
+                    <div class="empty-placeholder">
+                        <i class="ri-error-warning-line"></i>
+                        <p>${escapeHtmlForDialog(error.message)}</p>
+                        <button onclick="loadAndRenderCartSimple('${containerId}')">重试</button>
+                    </div>
+                `;
             }
-        });
+        }
+        throw error;
     }
-}
-
-function clearCartClick() {
-    if (confirm("确定要清空购物车吗？")) {
-        clearCart().then(success => {
-            if (success) {
-                loadCartPage();
-            }
-        });
-    }
-}
-
-function updateCartTotal() {
-    // 重新计算总价
-    let total = 0;
-    document.querySelectorAll('.cart-item').forEach(item => {
-        const priceText = item.querySelector('.price-value').textContent.replace('￥', '');
-        const quantity = parseInt(item.querySelector('input[type="number"]').value);
-        total += parseFloat(priceText) * quantity;
-    });
-    
-    const totalElement = document.querySelector('.total-amount');
-    if (totalElement) {
-        totalElement.textContent = `￥${total.toFixed(2)}`;
-    }
-}
-
-function loadCartPage() {
-    getCart().then(items => {
-        renderCartPage(items);
-    }).catch(err => {
-        console.error("加载购物车失败:", err);
-    });
-}
-
-function checkout() {
-    alert("结算功能开发中...");
-    // TODO: 实现结算逻辑
 }

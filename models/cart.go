@@ -2,8 +2,8 @@ package models
 
 type Cart struct {
 	CartID   int64 `json:"cart_id" gorm:"primaryKey;autoIncrement"`
-	UserID   int64 `json:"user_id" gorm:"not null;index:idx_user_book,unique"` //创建用户ID和书籍ID的唯一索引
-	BookID   int64 `json:"book_id" gorm:"not null;index:idx_user_book,unique"`
+	UserID   int64 `json:"user_id" gorm:"not null;uniqueIndex:uk_user_book,priority:1"`
+	BookID   int64 `json:"book_id" gorm:"not null;uniqueIndex:uk_user_book,priority:2"`
 	Quantity int64 `json:"quantity" gorm:"not null"`
 }
 

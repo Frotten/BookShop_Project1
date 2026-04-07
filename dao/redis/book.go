@@ -344,3 +344,41 @@ func GetRankIDsByScore(start, end int64) ([]int64, int64, error) {
 	}
 	return ids, total, nil
 }
+
+func GetUserRatingsByUserID(UserID int64) ([]*models.UserRating, error) {
+	key := "user:rating:" + strconv.FormatInt(UserID, 10)
+	var Ans []*models.UserRating
+	data, err := RDB.HGetAll(ctx, key).Result()
+	if err != nil {
+		return nil, err
+	}
+	if len(data) == 0 {
+		return nil, nil
+	}
+	for bookIDStr, scoreStr := range data {
+		BookID, _ := strconv.ParseInt(bookIDStr, 10, 64)
+		score, _ := strconv.ParseInt(scoreStr, 10, 64)
+		BookCache, err := GetBookByBookID(BookID)
+		if err != nil {
+			continue
+		}
+		Ans = append(Ans, &models.UserRating{
+			BookID: BookID,
+			Score:  score,
+			Title:  BookCache.Title,
+			UserID: UserID,
+		})
+	}
+	return Ans, nil
+}
+
+func SetUserRatings(UserID int64, Ratings []*models.UserRating) error {
+	key := "user:rating:" + strconv.FormatInt(UserID, 10)
+	pipe := RDB.Pipeline()
+	for _, r := range Ratings {
+		field := strconv.FormatInt(r.BookID, 10)
+		pipe.HSet(ctx, key, field, r.Score)
+	}
+	_, err := pipe.Exec(ctx)
+	return err
+}

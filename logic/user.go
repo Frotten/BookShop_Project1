@@ -68,7 +68,7 @@ func GetUserInfo(UserID int64) (*models.UserView, models.ResCode) {
 	UserIDStr := strconv.FormatInt(UserID, 10)
 	z, err, _ := redis.G.Do(UserIDStr, func() (interface{}, error) {
 		View, err := redis.GetUserInfo(UserID)
-		if err == nil {
+		if err == nil && View != nil {
 			return View, err
 		}
 		User, err := mysql.GetUserInfo(UserID)
@@ -90,4 +90,89 @@ func GetUserInfo(UserID int64) (*models.UserView, models.ResCode) {
 		return nil, models.CodeServerBusy
 	}
 	return z.(*models.UserView), models.CodeSuccess
+}
+
+func GetCommentsByUser(UserID int64, UserName string) ([]*models.CommentBook, models.ResCode) {
+	z, err, _ := redis.G.Do(strconv.FormatInt(UserID, 10), func() (interface{}, error) {
+		ids, err := redis.GetCommentIDsByUserID(UserID)
+		if err != nil {
+			res, err := mysql.GetCommentsByUserID(UserID)
+			if err != nil {
+				return nil, err
+			}
+			for _, c := range res {
+				_ = redis.SetCommentsToCache(c)
+				c.Username = UserName
+				Book, _ := GetBookByID(c.BookID)
+				c.BookTitle = Book.Title
+			}
+			return res, err
+		}
+		if len(ids) == 0 {
+			return nil, err
+		}
+		list, missIDs, err := redis.MGetComments(ids)
+		if err != nil {
+			return nil, err
+		}
+		if len(missIDs) > 0 {
+			dbList, err := mysql.GetCommentsByIDs(missIDs)
+			if err != nil {
+				return nil, err
+			}
+			for _, c := range dbList {
+				_ = redis.SetCommentsToCache(c)
+				list = append(list, c)
+			}
+		}
+		var res []*models.CommentBook
+		for _, c := range list {
+			res = append(res, c)
+		}
+		for _, c := range res {
+			c.Username = UserName
+			Book, _ := GetBookByID(c.BookID)
+			c.BookTitle = Book.Title
+		}
+		return res, err
+	})
+	if err != nil {
+		return nil, models.CodeServerBusy
+	}
+	if z == nil {
+		return nil, models.CodeSuccess
+	}
+	return z.([]*models.CommentBook), models.CodeSuccess
+}
+
+func GetRatingsByUser(UserID int64) ([]*models.UserRating, models.ResCode) {
+	z, err, _ := redis.G.Do(strconv.FormatInt(UserID, 10), func() (interface{}, error) {
+		Res, err := redis.GetUserRatingsByUserID(UserID)
+		if err == nil {
+			return Res, nil
+		}
+		URB, err := mysql.GetUserRatingByUserID(UserID)
+		if err != nil {
+			return nil, err
+		}
+		var ResList []*models.UserRating
+		for _, ur := range URB {
+			Book, _ := GetBookByID(ur.BookID)
+			ResList = append(ResList, &models.UserRating{
+				UserID: ur.UserID,
+				BookID: ur.BookID,
+				Score:  ur.Score,
+				Title:  Book.Title,
+			})
+		}
+		_ = redis.SetUserRatings(UserID, ResList)
+		return ResList, nil
+	})
+	if err != nil {
+		return nil, models.CodeServerBusy
+	}
+	if z == nil {
+		return nil, models.CodeSuccess
+	}
+	return z.([]*models.UserRating), models.CodeSuccess
 }

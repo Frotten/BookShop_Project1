@@ -118,14 +118,14 @@
 
     // 根据分数显示星星 (满分100)
     function renderStars(score) {
-        const starValue = score / 20; // 满分5星
-        const fullStars = Math.floor(starValue);
-        const halfStar = (starValue % 1) >= 0.5;
+        const fullStars = Math.floor(score);
+        const halfStar = (score % 1) >= 0.5;
         let starsHtml = '';
         for(let i=0; i<fullStars; i++) starsHtml += '<i class="ri-star-fill"></i>';
         if(halfStar) starsHtml += '<i class="ri-star-half-fill"></i>';
-        while(starsHtml.length/24 < 5) starsHtml += '<i class="ri-star-line"></i>';
-        return `<span class="score-stars">${starsHtml}</span> <span style="font-weight:600;">${(score/100).toFixed(2)}分</span>`;
+        const emptyStars = 5 - fullStars - (halfStar ? 1 : 0);
+        for(let i=0; i<emptyStars; i++) starsHtml += '<i class="ri-star-line"></i>';
+        return `<span class="score-stars">${starsHtml}</span> <span style="font-weight:600;">${(score).toFixed(2)}分</span>`;
     }
 
     // 获取当前用户信息并渲染
@@ -137,8 +137,8 @@
                 document.getElementById('username').innerText = escapeHtml(result.data.username) || '未设置';
                 document.getElementById('email').innerText = escapeHtml(result.data.email) || '未设置';
                 let genderText = '';
-                if (result.data.gender === 'male') genderText = '男';
-                else if (result.data.gender === 'female') genderText = '女';
+                if (result.data.gender === 1) genderText = '男';
+                else if (result.data.gender === 0) genderText = '女';
                 else genderText = result.data.gender || '未填写';
                 document.getElementById('gender').innerText = genderText;
             } else {
@@ -221,7 +221,7 @@
     async function loadMyRatings() {
         setPanelLoading(true);
         try {
-            const res = await apiFetch('/api/user/ratings', { method: 'GET' });
+            const res = await apiFetch('/api/userRatings', { method: 'GET' });
             const result = await res.json();
             if (result.code === 1000) {
                 const ratings = result.data || [];
@@ -250,89 +250,19 @@
                         <span class="book-title" data-book-id="${r.book_id}" onclick="gotoBookDetail(${r.book_id})">📘 ${escapeHtml(r.book_title)}</span>
                         <span class="meta-text">${renderStars(scoreNum)}</span>
                     </div>
-                    ${r.comment ? `<div class="content-text">💬 ${escapeHtml(r.comment)}</div>` : ''}
-                    <div class="meta-text" style="font-size:0.75rem;">评价于 ${formatDate(r.created_at)}</div>
                 </div>
             `;
         });
         panel.innerHTML = html;
     }
 
-    // 购物车 (复用已有getCart，但需要渲染自定义简洁列表)
+    // 购物车 (使用 CommonScript 的统一方法)
     async function loadMyCart() {
         setPanelLoading(true);
         try {
-            const cartItems = await getCart();  // getCart 定义在 CommonScript.js 中, 返回数组
-            renderCartList(cartItems);
-        } catch (res) {
-            console.error('获取购物车失败:', res);
-            let errMsg = res.message || '加载购物车失败';
-            if (errMsg === '请先登录') {
-                document.getElementById('dynamicPanel').innerHTML = `<div class="empty-placeholder"><i class="ri-lock-line"></i><p>请先登录后查看购物车</p><a href="/page/LoginPage"><button>去登录</button></a></div>`;
-            } else {
-                document.getElementById('dynamicPanel').innerHTML = `<div class="empty-placeholder"><i class="ri-error-warning-line"></i><p>${escapeHtml(errMsg)}</p><button onclick="loadMyCart()">重试</button></div>`;
-            }
-        }
-    }
-
-    async function renderCartList(items) {
-        const panel = document.getElementById('dynamicPanel');
-        if (!items || items.length === 0) {
-            panel.innerHTML = `<div class="empty-placeholder"><i class="ri-shopping-cart-line"></i><p>购物车空空如也，快去添加喜欢的书籍吧~</p><a href="/page/HomePage"><button style="margin-top:1rem;"><i class="ri-add-line"></i> 去购物</button></a></div>`;
-            return;
-        }
-        let totalPrice = 0;
-        let html = `<div style="margin-bottom:1rem;"><strong>🛒 购物车商品 (${items.length})</strong></div>`;
-        for (const item of items) {
-            const priceYuan = (item.price / 100).toFixed(2);
-            const subtotal = (item.price * item.quantity / 100).toFixed(2);
-            totalPrice += parseFloat(subtotal);
-            html += `
-                <div class="cart-item-simple" data-book-id="${item.book_id}">
-                    <div class="item-header">
-                        <span class="book-title" data-book-id="${item.book_id}" onclick="gotoBookDetail(${item.book_id})">📚 ${escapeHtml(item.title)}</span>
-                        <span class="meta-text">单价: ￥${priceYuan}  × ${item.quantity}</span>
-                    </div>
-                    <div class="content-text">
-                        小计: <span class="price-amount">￥${subtotal}</span>
-                        ${item.stock ? `<span style="margin-left:1rem;font-size:0.75rem;">库存: ${item.stock}</span>` : ''}
-                    </div>
-                    <div class="cart-actions">
-                        <button class="small-link" onclick="updateCartQuantity(${item.book_id}, ${item.quantity - 1})"><i class="ri-subtract-line"></i> 减一</button>
-                        <button class="small-link" onclick="updateCartQuantity(${item.book_id}, ${item.quantity + 1})"><i class="ri-add-line"></i> 加一</button>
-                        <button class="small-link" onclick="removeCartItem(${item.book_id})"><i class="ri-delete-bin-line"></i> 删除</button>
-                    </div>
-                </div>
-            `;
-        }
-        html += `<div style="margin-top:1.5rem; text-align:right; border-top:1px solid var(--gray-200); padding-top:1rem;">
-                    <strong>总计：<span class="price-amount" style="font-size:1.3rem;">￥${totalPrice.toFixed(2)}</span></strong>
-                    <div style="margin-top:0.8rem;"><button onclick="window.location.href='/page/CartPage'" style="background: var(--primary);">前往购物车详细结算</button></div>
-                </div>`;
-        panel.innerHTML = html;
-    }
-
-    // 更新购物车数量 (调用 CommonScript 中的 updateCartItem)
-    async function updateCartQuantity(bookId, newQuantity) {
-        if (newQuantity <= 0) {
-            await removeCartItem(bookId);
-            return;
-        }
-        const success = await updateCartItem(bookId, newQuantity);  // 来自 CommonScript
-        if (success) {
-            showSuccessToast('数量已更新');
-            await loadMyCart(); // 刷新购物车面板
-        } else {
-            alert('更新失败，请重试');
-        }
-    }
-
-    async function removeCartItem(bookId) {
-        const success = await removeFromCart(bookId); // 来自 CommonScript
-        if (success) {
-            await loadMyCart();
-        } else {
-            alert('删除失败');
+            await loadAndRenderCartSimple('dynamicPanel');
+        } catch (error) {
+            console.error('加载购物车失败:', error);
         }
     }
 
@@ -431,11 +361,10 @@
     };
 
     // 暴露一些全局函数以便 onclick 调用
-    window.updateCartQuantity = updateCartQuantity;
-    window.removeCartItem = removeCartItem;
-    window.loadMyCart = loadMyCart;
+    window.gotoBookDetail = gotoBookDetail;
     window.loadMyComments = loadMyComments;
     window.loadMyRatings = loadMyRatings;
+    window.loadMyCart = loadMyCart;
     window.loadMyOrders = loadMyOrders;
 
     // ---------- 页面初始化 ----------
@@ -467,7 +396,15 @@
                 if (tab) switchTab(tab);
             });
         });
+
+        // 监听购物车更新事件，自动刷新
+        document.addEventListener('cartUpdated', function(e) {
+            if (currentTab === 'cart') {
+                loadMyCart();
+            }
+        });
     });
+
 </script>
 </body>
 </html>

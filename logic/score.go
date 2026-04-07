@@ -203,7 +203,7 @@ func GetTopScoreList() ([]*models.ListBook, models.ResCode) {
 				_ = redis.SetBookSummary(T)
 				return T, nil
 			})
-			if err != nil {
+			if err != nil || T == nil {
 				continue
 			}
 			T = v.(*models.ListBook)

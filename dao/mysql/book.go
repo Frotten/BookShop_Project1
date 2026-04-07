@@ -175,3 +175,9 @@ func GetTagsByBookID(bookID int64) ([]models.Tag, error) {
 func DeleteBookToTag(BookID int64) error {
 	return DB.Where("book_id = ?", BookID).Delete(&models.BookTag{}).Error
 }
+
+func GetUserRatingByUserID(UserID int64) ([]*models.UserRateBook, error) {
+	var URB []*models.UserRateBook
+	err := DB.Where("user_id = ?", UserID).Find(&URB).Error
+	return URB, err
+}

@@ -5,7 +5,6 @@ import (
 	"Project1_Shop/logic"
 	"Project1_Shop/models"
 	"Project1_Shop/pkg/jwt"
-	"fmt"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -110,7 +109,6 @@ func GetUserInfoHandle(c *gin.Context) {
 		HandleResponse(c, res)
 		return
 	}
-	fmt.Println("GetUserInfoHandle success, UserInfo:", UserInfo)
 	HandleSuccess(c, UserInfo)
 }
 
@@ -134,4 +132,20 @@ func GetUserCommentsHandle(c *gin.Context) {
 		return
 	}
 	HandleSuccess(c, Comments)
+}
+
+func GetUserRatingsHandle(c *gin.Context) {
+	UserID, ok := c.Get("userID")
+	if !ok || UserID == nil {
+		zap.L().Error("GetUserRatingsHandle failed: UserID not found in context")
+		HandleResponse(c, models.CodeServerBusy)
+		return
+	}
+	Ratings, res := logic.GetRatingsByUser(UserID.(int64))
+	if res != models.CodeSuccess {
+		zap.L().Error("GetUserRatingsHandle failed")
+		HandleResponse(c, res)
+		return
+	}
+	HandleSuccess(c, Ratings)
 }

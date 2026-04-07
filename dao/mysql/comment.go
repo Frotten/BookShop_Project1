@@ -25,19 +25,19 @@ func SaveComment(p *models.CommentBook) error {
 
 func GetCommentsByBookID(bookID int64) ([]*models.CommentBook, error) {
 	var list []*models.CommentBook
-	err := DB.Where("book_id = ? AND status = ?", bookID, 1).Find(list).Error
+	err := DB.Where("book_id = ? AND status = ?", bookID, 1).Find(&list).Error
 	return list, err
 }
 
 func GetCommentsByUserID(UserID int64) ([]*models.CommentBook, error) {
 	var list []*models.CommentBook
-	err := DB.Where("user_id = ? AND status = ?", UserID, 1).Find(list).Error
+	err := DB.Where("user_id = ? AND status = ?", UserID, 1).Find(&list).Error
 	return list, err
 }
 
 func GetCommentsByIDs(ids []int64) ([]*models.CommentBook, error) {
 	var list []*models.CommentBook
-	err := DB.Where("comment_id IN ? AND status = ?", ids, 1).Find(list).Error
+	err := DB.Where("comment_id IN ? AND status = ?", ids, 1).Find(&list).Error
 	return list, err
 }
 

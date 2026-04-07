@@ -77,10 +77,10 @@ func AdminLogin(p *models.Admin) models.ResCode {
 }
 
 func GetUserInfo(UserID int64) (*models.User, error) {
-	var u *models.User
-	result := DB.First(u, UserID)
+	var u models.User
+	result := DB.First(&u, UserID)
 	if result.RowsAffected == 0 {
 		return nil, result.Error
 	}
-	return u, result.Error
+	return &u, result.Error
 }

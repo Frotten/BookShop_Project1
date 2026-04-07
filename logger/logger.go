@@ -52,7 +52,7 @@ func Init(cfg *settings.LogConfig) (err error) {
 		return
 	}
 	core := zapcore.NewCore(encoder, writeSyncer, l)
-	Lg := zap.New(core, zap.AddCaller())
+	Lg = zap.New(core, zap.AddCaller())
 	//替换zap全局的logger
 	zap.ReplaceGlobals(Lg)
 	return
