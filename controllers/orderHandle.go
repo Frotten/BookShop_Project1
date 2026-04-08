@@ -27,5 +27,11 @@ func CreateOrderHandle(c *gin.Context) {
 		HandleResponse(c, res)
 		return
 	}
+	res = logic.ClearCart(UserID.(int64))
+	if res != models.CodeSuccess {
+		zap.L().Error("ClearCart failed")
+		HandleResponse(c, res)
+		return
+	}
 	HandleSuccess(c, nil)
 }

@@ -28,8 +28,10 @@ func AutoMigration() {
 		&models.Book{},
 		&models.Cart{},
 		&models.Admin{},
+		&models.Order{},
 		&models.BookTag{},
 		&models.RateBook{},
+		&models.OrderItem{},
 		&models.CommentBook{},
 		&models.UserRateBook{},
 	)

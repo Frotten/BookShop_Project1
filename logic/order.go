@@ -43,7 +43,10 @@ func CreateOrder(orderParam models.OrderRequest, UserID int64) models.ResCode {
 	if err != nil {
 		return models.CodeMySQLError
 	}
-	redis.SaveOrder(Order)
+	err = redis.SaveOrder(Order)
+	if err != nil {
+		return models.CodeRedisError
+	}
 	for _, item := range orderParam.Items {
 		OrderItems = append(OrderItems, &models.OrderItem{
 			BookID:   item.BookID,
@@ -52,9 +55,13 @@ func CreateOrder(orderParam models.OrderRequest, UserID int64) models.ResCode {
 			OrderID:  Order.OrderID,
 		})
 	}
-	//err := mysql.CreateOrderItem(orderParam)
-	//if err != nil {
-	//	return models.CodeMySQLError
-	//}
+	err = mysql.CreateOrderItems(OrderItems)
+	if err != nil {
+		return models.CodeMySQLError
+	}
+	err = redis.SaveOrderItems(OrderItems)
+	if err != nil {
+		return models.CodeRedisError
+	}
 	return models.CodeSuccess
 }

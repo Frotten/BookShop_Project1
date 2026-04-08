@@ -502,8 +502,8 @@ function renderCartSimpleList(items, containerId) {
         <div style="margin-top:1.5rem; text-align:right; border-top:1px solid var(--gray-200); padding-top:1rem;">
             <strong>总计：<span class="price-amount" style="font-size:1.3rem;">￥${totalPrice.toFixed(2)}</span></strong>
             <div style="margin-top:0.8rem;">
-                <button onclick="window.location.href='/page/CartPage'" style="background: var(--primary);">
-                    前往购物车详细结算
+                <button onclick="if(typeof checkoutCart === 'function') checkoutCart();" style="background: var(--primary);">
+                    <i class="ri-bank-card-line"></i> 生成订单
                 </button>
             </div>
         </div>
