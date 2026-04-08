@@ -52,49 +52,12 @@
 </div>
 <script src="/static/js/CommonScript.js"></script>
 <script>
-    // ======================= 接口定义与约定说明 =======================
-    // 以下所有接口均需后端实现，前端已预留调用逻辑
-    //
-    // 1. 获取当前登录用户信息
-    //    GET /api/userInfo
-    //    响应格式：{ code: 1000, data: { username: "string", email: "string", gender: "male/female/other" } }
-    //
-    // 2. 我的评论列表
-    //    GET /api/userComments
-    //    响应格式：{ code: 1000, data: [ {
-    //        comment_id: number,
-    //        book_id: number,
-    //        username: string,
-    //        parent_id: number,
-    //        root_id: number,
-    //        like_count: number,
-    //        reply_count: number,
-    //        status: number,
-    //        comment: string,
-    //        comment_time: "2024-01-01 12:00:00"
-    //    } ] }
-    //    注意：comment 字段为评论内容，status=1 表示正常，2=删除，3=审核中
-    //
-    // 3. 我评分过的书籍列表
-    //    GET /api/user/ratings
-    //    响应格式：{ code: 1000, data: [ { rating_id: number, book_id: number, book_title: string, score: number(0-100), comment?: string, created_at: string } ] }
-    //    注意：score 为整数，展示时需除以 100 显示分数，例如 85 分展示为 8.5 分
-    //
-    // 4. 我的订单列表
+    //    我的订单列表
     //    GET /api/user/orders
     //    响应格式：{ code: 1000, data: [ { order_id: string, total_amount: number(单位：分), status: string, created_at: string } ] }
     //    状态枚举：pending(待付款), paid(已付款), shipped(已发货), completed(已完成), cancelled(已取消)
-    //
-    // 5. 购物车接口 (已存在于 CommonScript.js)
-    //    GET /api/cart  返回 { code:1000, data: [ { book_id, title, price, quantity, stock, cover_image } ] }
-    //    DELETE /api/cart/:bookId 删除购物车项
-    //    PUT /api/cart 更新数量 (body: { book_id, quantity })
-    // ================================================================
-
-    // 全局标记当前激活的选项卡
     let currentTab = 'comments';
 
-    // ---------- 辅助函数 ----------
     function escapeHtml(str) {
         if (!str) return '';
         return String(str)
@@ -105,7 +68,6 @@
             .replace(/'/g, '&#39;');
     }
 
-    // 格式化日期 (简单处理)
     function formatDate(dateStr) {
         if (!dateStr) return '未知时间';
         try {
@@ -116,7 +78,6 @@
         }
     }
 
-    // 根据分数显示星星 (满分100)
     function renderStars(score) {
         const fullStars = Math.floor(score);
         const halfStar = (score % 1) >= 0.5;
@@ -128,7 +89,6 @@
         return `<span class="score-stars">${starsHtml}</span> <span style="font-weight:600;">${(score).toFixed(2)}分</span>`;
     }
 
-    // 获取当前用户信息并渲染
     async function loadUserProfile() {
         try {
             const response = await apiFetch('/api/userInfo', { method: 'GET' });
@@ -142,7 +102,6 @@
                 else genderText = result.data.gender || '未填写';
                 document.getElementById('gender').innerText = genderText;
             } else {
-                // token可能失效, 让checkAuth处理重定向
                 console.warn('获取用户信息失败', result.msg);
                 throw new Error('获取用户信息失败');
             }
@@ -154,7 +113,6 @@
         }
     }
 
-    // 通用加载器，显示加载状态
     function setPanelLoading(show = true) {
         const panel = document.getElementById('dynamicPanel');
         if (show) {

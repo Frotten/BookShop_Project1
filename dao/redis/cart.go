@@ -38,7 +38,6 @@ func GetCartRaw(UserID int64) ([]int64, map[int64]int64, error) {
 	for field, value := range data {
 		id, _ := strconv.ParseInt(field, 10, 64)
 		qty, _ := strconv.ParseInt(value, 10, 64)
-
 		ids = append(ids, id)
 		quantityMap[id] = qty
 	}

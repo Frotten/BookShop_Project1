@@ -4,6 +4,7 @@ import (
 	"Project1_Shop/dao/mysql"
 	"Project1_Shop/dao/redis"
 	"Project1_Shop/models"
+	"strconv"
 )
 
 func AddBookToCart(CartParam *models.CartParam) models.ResCode {
@@ -45,20 +46,29 @@ func buildCartView(
 }
 
 func GetCartList(UserID int64) ([]models.CartView, models.ResCode) {
-	ids, quantityMap, err := redis.GetCartRaw(UserID)
-	if err == nil {
-		bookList, err := GetBooksByIDs(ids)
-		if err != nil {
-			return nil, models.CodeServerBusy
+	z, err, _ := redis.G.Do(strconv.FormatInt(UserID, 10), func() (interface{}, error) {
+		ids, quantityMap, err := redis.GetCartRaw(UserID)
+		if err == nil {
+			bookList, err := GetBooksByIDs(ids)
+			if err != nil {
+				return nil, err
+			}
+			return buildCartView(UserID, bookList, quantityMap), nil
 		}
-		return buildCartView(UserID, bookList, quantityMap), models.CodeSuccess
-	}
-	cartList, err := mysql.GetCartList(UserID)
+		cartList, err := mysql.GetCartList(UserID)
+		if err != nil {
+			return nil, err
+		}
+		go redis.SetCartList(UserID, cartList)
+		return cartList, nil
+	})
 	if err != nil {
-		return nil, models.CodeMySQLError
+		return nil, models.CodeServerBusy
 	}
-	go redis.SetCartList(UserID, cartList)
-	return cartList, models.CodeSuccess
+	if z == nil {
+		return nil, models.CodeSuccess
+	}
+	return z.([]models.CartView), models.CodeSuccess
 }
 
 func UpdateCartItem(CartParam *models.CartParam) models.ResCode {
@@ -66,7 +76,7 @@ func UpdateCartItem(CartParam *models.CartParam) models.ResCode {
 	if err != nil {
 		return models.CodeMySQLError
 	}
-	_ = redis.DelCartItem(CartParam.UserID, CartParam.BookID)
+	_ = redis.ClearCart(CartParam.UserID)
 	return models.CodeSuccess
 }
 

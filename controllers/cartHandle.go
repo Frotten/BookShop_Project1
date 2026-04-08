@@ -84,7 +84,7 @@ func DeleteCartItemHandle(c *gin.Context) {
 		HandleResponse(c, models.CodeServerBusy)
 		return
 	}
-	BookIDStr := c.Query("book_id")
+	BookIDStr := c.Param("book_id")
 	if BookIDStr == "" {
 		zap.L().Error("DeleteCartItemHandle failed: book_id is empty")
 		HandleResponse(c, models.CodeInvalidParam)

@@ -122,21 +122,42 @@
                 <p><i class="ri-pencil-line"></i> 作者：${escapeHtml(book.author)}</p>
                 <p class="score"><i class="ri-star-smile-line"></i> 评分：${score}</p>
                 <p class="price"><i class="ri-money-cny-circle-line"></i> ￥${priceYuan}</p>
-                <button data-id="${book.book_id}"><i class="ri-shopping-cart-line"></i> 加入购物车</button>
+                <button
+                    class="add-to-cart-btn"
+                    data-id="${book.book_id}"
+                    data-title="${escapeHtml(book.title)}"
+                    data-price="${book.price}"
+                    data-stock="${book.stock || 99}"
+                >
+                    <i class="ri-shopping-cart-line"></i> 加入购物车
+                </button>
             </div>
         `;
         });
         grid.innerHTML = html;
 
-        // 卡片点击事件（跳转详情/加入购物车）
+        // 卡片点击事件（跳转详情）
         grid.addEventListener('click', function(e) {
-            const button = e.target.closest('button');
-            if (button && button.dataset.id) {
-                addToCart(button.dataset.id);
+            const card = e.target.closest('.book-card');
+            if (!card) return;
+
+            // 如果点击的是按钮，处理加入购物车
+            const button = e.target.closest('.add-to-cart-btn');
+            if (button) {
+                e.stopPropagation(); // 阻止冒泡，避免触发卡片点击
+                const bookId = button.dataset.id;
+                const title = button.dataset.title;
+                const price = button.dataset.price;
+                const stock = parseInt(button.dataset.stock) || 99;
+
+                if (bookId) {
+                    showQuantityDialog(bookId, title, price, stock);
+                }
                 return;
             }
-            const card = e.target.closest('.book-card');
-            if (card && card.dataset.bookId) {
+
+            // 点击卡片其他区域，跳转详情
+            if (card.dataset.bookId) {
                 window.location.href = `/page/BooksPage?book_id=${card.dataset.bookId}`;
             }
         });
@@ -144,9 +165,7 @@
 
     /** ---------- 排行榜 API 接口（请后端实现） ---------- */
     // 获取销量排行榜
-    async function fetchSalesRanking() {            //需要接口----------------------------------------------
-        // 示例 API 地址：/api/top/sales
-        // 期望返回数据格式：{ code:1000, data:[ {book_id, title, sales}, ... ] }
+    async function fetchSalesRanking() {
         const res = await apiFetch('/api/topSale', { method: 'GET' });
         const result = await res.json();
         if (result.code === 1000) {
@@ -157,9 +176,7 @@
     }
 
     // 获取评分排行榜
-    async function fetchScoreRanking() {            //需要接口---------------------------------------------
-        // 示例 API 地址：/api/top/score
-        // 期望返回数据格式：{ code:1000, data:[ {book_id, title, score}, ... ] }  // score 为整数，需除以100
+    async function fetchScoreRanking() {
         const res = await apiFetch('/api/topScore', { method: 'GET' });
         const result = await res.json();
         if (result.code === 1000) {
@@ -219,10 +236,10 @@
         listEl.innerHTML = html;
     }
 
-    // 转义函数（防止XSS）
+    // 转义函数（防止XSS）- 复用 CommonScript 中的逻辑
     function escapeHtml(unsafe) {
         if (!unsafe) return '';
-        return unsafe
+        return String(unsafe)
             .replace(/&/g, "&amp;")
             .replace(/</g, "&lt;")
             .replace(/>/g, "&gt;")

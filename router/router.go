@@ -31,7 +31,7 @@ func SetUp() *gin.Engine {
 		//v1.GET("/topSale", controllers.TopSaleHandle)
 		v1.GET("/topScore", controllers.TopScoreHandle)
 		v1.GET("/comments", controllers.CommentsHandle)
-		Login := v1.Use(middlewares.JWTAuthMiddleware())
+		Login := v1.Use(middlewares.JWTAuthMiddleware(), middlewares.CheckLoginOnlyMiddleware())
 		{
 			Login.GET("/userInfo", controllers.GetUserInfoHandle)
 			Login.GET("/userComments", controllers.GetUserCommentsHandle)
@@ -44,6 +44,7 @@ func SetUp() *gin.Engine {
 			Login.PUT("/cart", controllers.UpdateCartItemHandle)
 			Login.DELETE("/cart/:book_id", controllers.DeleteCartItemHandle)
 			Login.DELETE("/cart", controllers.ClearCartHandle)
+			Login.POST("/orderCreate", controllers.CreateOrderHandle)
 		}
 	}
 	v2 := r.Group("/page")
@@ -70,7 +71,7 @@ func SetUp() *gin.Engine {
 	v3.Use(middlewares.JWTAuthMiddleware(), middlewares.AdminOnlyMiddleware())
 	{
 		//v3.GET("/status", controllers.AdminStatusHandle) //运营统计
-		book := v3.Group("/book") //管理员对书籍的增删改查
+		book := v3.Group("/book")
 		{
 			book.POST("/add", controllers.AdminAddBookHandle)
 			book.GET("/getbook/:book_id", controllers.GetBookParamHandle)

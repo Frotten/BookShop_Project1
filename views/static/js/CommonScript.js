@@ -349,18 +349,13 @@ function getCart() {
         });
 }
 
-// 更新购物车商品数量（带库存验证）
-function updateCartItem(bookId, quantity, maxStock) {
+// 更新购物车商品数量
+function updateCartItem(bookId, quantity) {
     if (quantity <= 0) {
         return removeFromCart(bookId);
     }
     
-    if (maxStock && quantity > maxStock) {
-        alert(`库存不足，最多可购买 ${maxStock} 件`);
-        return Promise.resolve(false);
-    }
-    
-    return apiFetch("/api/cart", {
+    return apiFetch("/api/cart/", {
         method: "PUT",
         credentials: "include",
         body: JSON.stringify({ 

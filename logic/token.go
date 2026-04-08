@@ -23,7 +23,7 @@ func Refresh(refreshToken string, c *gin.Context) (string, string, error) {
 	if ans.ExpiresAt.Before(time.Now()) {
 		return "", "", errors.New("refresh token expired")
 	}
-	_, err = redis.RDB.Get(c, "auth:refresh:"+tokenHash).Result()
+	err = redis.SetRefreshToken(tokenHash)
 	if err != nil {
 		return "", "", err
 	}

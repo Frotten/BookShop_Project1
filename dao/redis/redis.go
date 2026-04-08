@@ -20,6 +20,7 @@ const UserTime = time.Minute * 30
 const ListTime = time.Hour * 24 * 7
 const CommentListTime = time.Minute * 15
 const BookTime = time.Hour * 24 * 7 * 2
+const OrderTime = time.Minute * 30
 
 //func Init(cfg *settings.RedisConfig) (err error) {
 //	RDB = redis.NewClient(&redis.Options{

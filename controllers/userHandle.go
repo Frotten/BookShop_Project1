@@ -55,7 +55,12 @@ func LoginHandler(c *gin.Context) {
 		HandleResponse(c, models.CodeServerBusy)
 		return
 	}
-	redis.RDB.Set(c, "auth:refresh:"+userTokenHash, User.UserID, jwt.TokenExpireDuration)
+	err = redis.SetUserAuth(userTokenHash, User.UserID)
+	if err != nil {
+		zap.L().Error("redis.SetUserAuth failed", zap.Error(err))
+		HandleResponse(c, models.CodeServerBusy)
+		return
+	}
 	c.SetCookie(
 		"refresh_token",
 		refreshToken,

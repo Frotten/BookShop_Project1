@@ -2,8 +2,11 @@ package middlewares
 
 import (
 	"Project1_Shop/controllers"
+	"Project1_Shop/dao/redis"
 	"Project1_Shop/models"
 	"Project1_Shop/pkg/jwt"
+	"crypto/sha256"
+	"encoding/hex"
 	"net/http"
 	"strings"
 
@@ -24,7 +27,6 @@ func JWTAuthMiddleware() func(c *gin.Context) {
 			c.Abort()
 			return
 		}
-		// parts[1]是获取到的tokenString，使用之前定义好的解析JWT的函数来解析它
 		mc, err := jwt.ParseToken(parts[1])
 		if err != nil {
 			controllers.HandleResponse(c, models.CodeInvalidToken)
@@ -70,5 +72,27 @@ func CookieAuthMiddleware() gin.HandlerFunc { //页面跳转无法将token写入
 		c.Set("username", claims.Username)
 		c.Set("permission", claims.Permission)
 		c.Next()
+	}
+}
+
+func CheckLoginOnlyMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		refreshToken, err := c.Cookie("refresh_token")
+		if err != nil {
+			controllers.HandleResponse(c, models.CodeNeedLogin)
+			c.Abort()
+			return
+		}
+		hash := sha256.Sum256([]byte(refreshToken))
+		tokenHash := hex.EncodeToString(hash[:])
+		UserID, _ := c.Get("userID")
+		ReTokenHash := redis.GetTokenHash(UserID.(int64))
+		if tokenHash == ReTokenHash {
+			c.Next()
+			return
+		}
+		controllers.HandleResponse(c, models.CodeInvalidToken)
+		c.Abort()
+		return
 	}
 }

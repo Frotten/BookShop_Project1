@@ -29,13 +29,13 @@ func GenToken(userID int64, username string) (Token string, err error) {
 		Username:   username,
 		Permission: "user",
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(AccessExpireDuration)), //过期时间
-			IssuedAt:  jwt.NewNumericDate(time.Now()),                           //签发时间
-			NotBefore: jwt.NewNumericDate(time.Now()),                           //生效时间
-			Issuer:    "Shop",                                                   //签发人
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(AccessExpireDuration)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			NotBefore: jwt.NewNumericDate(time.Now()),
+			Issuer:    "Shop",
 		},
 	}
-	Token, err = jwt.NewWithClaims(jwt.SigningMethodHS256, c).SignedString(mySecret) //使用HS256加密算法,并使用密钥进行签名
+	Token, err = jwt.NewWithClaims(jwt.SigningMethodHS256, c).SignedString(mySecret)
 	return
 }
 
@@ -45,13 +45,13 @@ func GenAdminToken(userID int64, username string) (Token string, err error) {
 		Username:   username,
 		Permission: "admin",
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(AccessExpireDuration)), //过期时间
-			IssuedAt:  jwt.NewNumericDate(time.Now()),                           //签发时间
-			NotBefore: jwt.NewNumericDate(time.Now()),                           //生效时间
-			Issuer:    "Shop",                                                   //签发人
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(AccessExpireDuration)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			NotBefore: jwt.NewNumericDate(time.Now()),
+			Issuer:    "Shop",
 		},
 	}
-	Token, err = jwt.NewWithClaims(jwt.SigningMethodHS256, c).SignedString(mySecret) //使用HS256加密算法,并使用密钥进行签名
+	Token, err = jwt.NewWithClaims(jwt.SigningMethodHS256, c).SignedString(mySecret)
 	return
 }
 
@@ -64,7 +64,6 @@ func GenerateRefreshToken() (string, string, error) {
 	token := base64.URLEncoding.EncodeToString(b)
 	hash := sha256.Sum256([]byte(token))
 	tokenHash := hex.EncodeToString(hash[:])
-
 	return token, tokenHash, nil
 }
 
