@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>订单详情 - 网络书城</title>
+    <link rel="stylesheet" href="/static/css/CommonStyle.css">
+    <link rel="stylesheet" href="/static/css/ProfileStyle.css">
+    <link rel="stylesheet" href="/static/css/OrderDetailStyle.css">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css" rel="stylesheet"/>
+</head>
+<body>
+<header class="navbar">
+    <h1>
+        <a href="/page/HomePage" style="color: inherit; text-decoration: none;">
+            <i class="ri-book-open-line"></i> 网络书城
+        </a>
+    </h1>
+    <div class="nav-right">
+        <a href="/page/HomePage"><i class="ri-home-line"></i> 首页</a>
+        <div id="auth-area" style="display:none; align-items:center; gap:12px;">
+            <a href="/page/ProfilePage" class="btn-link"><i class="ri-user-line"></i> 个人中心</a>
+            <button onclick="logout()"><i class="ri-logout-box-line"></i> 退出</button>
+        </div>
+        <div id="guest-area" style="display:flex; align-items:center; gap:12px;">
+            <a href="/page/LoginPage" class="btn-link"><i class="ri-login-circle-line"></i> 登录</a>
+        </div>
+    </div>
+</header>
+
+<div class="container">
+    <!-- 面包屑导航 -->
+    <div class="breadcrumb">
+        <a href="/page/ProfilePage"><i class="ri-user-line"></i> 个人中心</a>
+        <i class="ri-arrow-right-s-line breadcrumb-sep"></i>
+        <a href="/page/ProfilePage#orders" onclick="goBackToOrders(event)"><i class="ri-file-list-line"></i> 我的订单</a>
+        <i class="ri-arrow-right-s-line breadcrumb-sep"></i>
+        <span class="breadcrumb-current">订单详情</span>
+    </div>
+
+    <!-- 主内容区 -->
+    <div id="orderDetailContent">
+        <div class="empty-placeholder">
+            <i class="ri-loader-4-line ri-spin"></i>
+            <p>加载订单详情中...</p>
+        </div>
+    </div>
+</div>
+
+<script src="/static/js/CommonScript.js"></script>
+<script>
+
+    // ===== 工具函数 =====
+    function escapeHtml(str) {
+        if (str === null || str === undefined) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function formatDate(dateStr) {
+        if (!dateStr) return '未知时间';
+        try {
+            const date = new Date(dateStr);
+            return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')} ${String(date.getHours()).padStart(2,'0')}:${String(date.getMinutes()).padStart(2,'0')}:${String(date.getSeconds()).padStart(2,'0')}`;
+        } catch(e) {
+            return dateStr;
+        }
+    }
+
+    /**
+     * 将后端 int8 状态码映射为可读文字、样式类和图标
+     * 0=待付款, 1=已付款, 2=已发货, 3=已完成, -1=已取消
+     */
+    function getOrderStatus(status) {
+        switch (Number(status)) {
+            case 0:  return { text: '待付款', cls: 'pending',   icon: 'ri-time-line',            desc: '等待买家付款' };
+            case 1:  return { text: '已付款', cls: 'paid',      icon: 'ri-bank-card-line',        desc: '付款成功，等待发货' };
+            case 2:  return { text: '已发货', cls: 'shipped',   icon: 'ri-truck-line',            desc: '商品已发出，请耐心等待' };
+            case 3:  return { text: '已完成', cls: 'completed', icon: 'ri-checkbox-circle-line',  desc: '订单已完成，感谢购买' };
+            case -1: return { text: '已取消', cls: 'cancelled', icon: 'ri-close-circle-line',     desc: '订单已取消' };
+            default: return { text: '未知状态', cls: '',        icon: 'ri-question-line',         desc: '' };
+        }
+    }
+
+    // 返回订单列表
+    function goBackToOrders(e) {
+        if (e) e.preventDefault();
+        window.location.href = '/page/ProfilePage';
+        // 延迟后切换到订单Tab（兼容 SPA 场景；MPA 场景可以通过 URL hash 处理）
+        setTimeout(() => {
+            if (typeof switchTab === 'function') switchTab('orders');
+        }, 300);
+    }
+
+    // ===== 渲染订单详情 =====
+    function renderOrderDetail(order) {
+        const content = document.getElementById('orderDetailContent');
+        const statusInfo = getOrderStatus(order.status);
+        const amountYuan = (order.total_price / 100).toFixed(2);
+        const items = order.Items || [];
+
+        // 计算商品总数量
+        const totalQty = items.reduce((sum, item) => sum + (item.quantity || 0), 0);
+
+        // 渲染进度条步骤
+        const steps = [
+            { status: 0,  label: '提交订单', icon: 'ri-file-add-line' },
+            { status: 1,  label: '付款成功', icon: 'ri-bank-card-line' },
+            { status: 2,  label: '商品发货', icon: 'ri-truck-line' },
+            { status: 3,  label: '交易完成', icon: 'ri-checkbox-circle-line' },
+        ];
+        const currentStatusNum = Number(order.status);
+        const isCancelled = currentStatusNum === -1;
+
+        let stepsHtml = '';
+        if (!isCancelled) {
+            stepsHtml = `<div class="order-progress">`;
+            steps.forEach((step, idx) => {
+                const isDone = currentStatusNum >= step.status;
+                const isCurrent = currentStatusNum === step.status;
+                stepsHtml += `
+                    <div class="progress-step ${isDone ? 'done' : ''} ${isCurrent ? 'current' : ''}">
+                        <div class="step-icon"><i class="${step.icon}"></i></div>
+                        <div class="step-label">${step.label}</div>
+                    </div>
+                `;
+                if (idx < steps.length - 1) {
+                    stepsHtml += `<div class="progress-line ${currentStatusNum > step.status ? 'done' : ''}"></div>`;
+                }
+            });
+            stepsHtml += `</div>`;
+        } else {
+            stepsHtml = `
+                <div class="order-cancelled-banner">
+                    <i class="ri-close-circle-line"></i>
+                    <span>此订单已取消</span>
+                </div>
+            `;
+        }
+
+        // 渲染商品列表
+        let itemsHtml = '';
+        if (!items.length) {
+            itemsHtml = `<div class="od-empty-items"><i class="ri-inbox-line"></i><span>暂无商品信息</span></div>`;
+        } else {
+            items.forEach(item => {
+                const priceYuan = (item.price / 100).toFixed(2);
+                const subtotal  = (item.price * item.quantity / 100).toFixed(2);
+                itemsHtml += `
+                    <div class="od-item" onclick="gotoBookDetail(${item.book_id})">
+                        <div class="od-item-icon"><i class="ri-book-2-line"></i></div>
+                        <div class="od-item-info">
+                            <div class="od-item-title">${escapeHtml(item.title || ('书籍 #' + item.book_id))}</div>
+                            <div class="od-item-meta">
+                                <span>单价：<strong class="price-amount" style="font-size:1rem;">￥${priceYuan}</strong></span>
+                                <span class="od-item-qty">× ${item.quantity}</span>
+                            </div>
+                        </div>
+                        <div class="od-item-subtotal">
+                            <span class="subtotal-label">小计</span>
+                            <span class="price-amount">￥${subtotal}</span>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        // 确认收货按钮（仅已发货状态显示）
+        let actionHtml = '';
+        if (currentStatusNum === 2) {
+            actionHtml = `
+                <div class="od-action-bar">
+                    <button class="btn-confirm-receipt" id="confirmReceiptBtn" onclick="confirmReceipt(${order.order_id})">
+                        <i class="ri-checkbox-circle-line"></i> 确认收货
+                    </button>
+                </div>
+            `;
+        }
+
+        content.innerHTML = `
+            <!-- 页面标题 -->
+            <div class="od-page-title">
+                <button class="od-back-btn" onclick="goBackToOrders()">
+                    <i class="ri-arrow-left-line"></i> 返回订单列表
+                </button>
+                <h2><i class="ri-file-list-3-line"></i> 订单详情</h2>
+            </div>
+
+            <!-- 订单状态卡片 -->
+            <div class="od-card od-status-card">
+                <div class="od-status-badge ${statusInfo.cls}">
+                    <i class="${statusInfo.icon}"></i>
+                    <span>${statusInfo.text}</span>
+                </div>
+                <div class="od-status-desc">${statusInfo.desc}</div>
+                ${stepsHtml}
+            </div>
+
+            <!-- 订单信息卡片 -->
+            <div class="od-card">
+                <div class="od-card-title"><i class="ri-information-line"></i> 订单信息</div>
+                <div class="od-info-grid">
+                    <div class="od-info-row">
+                        <span class="od-info-label">订单编号</span>
+                        <span class="od-info-value od-order-id">${escapeHtml(String(order.order_id))}</span>
+                    </div>
+                    <div class="od-info-row">
+                        <span class="od-info-label">下单时间</span>
+                        <span class="od-info-value">${formatDate(order.created_at)}</span>
+                    </div>
+                    <div class="od-info-row">
+                        <span class="od-info-label">订单状态</span>
+                        <span class="od-info-value"><span class="order-status ${statusInfo.cls}">${statusInfo.text}</span></span>
+                    </div>
+                    <div class="od-info-row">
+                        <span class="od-info-label">商品数量</span>
+                        <span class="od-info-value">${totalQty} 件</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 商品清单卡片 -->
+            <div class="od-card">
+                <div class="od-card-title"><i class="ri-shopping-bag-line"></i> 商品清单 <span class="od-item-count">${items.length} 种</span></div>
+                <div class="od-items-list">
+                    ${itemsHtml}
+                </div>
+                <div class="od-total-row">
+                    <span class="od-total-label">订单总额</span>
+                    <span class="od-total-amount price-amount">￥${amountYuan}</span>
+                </div>
+            </div>
+
+            ${actionHtml}
+        `;
+    }
+
+    // ===== 确认收货 =====
+    async function confirmReceipt(orderId) {
+        const btn = document.getElementById('confirmReceiptBtn');
+        if (!btn) return;
+
+        if (!confirm('确认已收到商品吗？')) return;
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> 处理中...';
+
+        try {
+            const response = await apiFetch('/api/orderConfirm', {
+                method: 'POST',
+                body: JSON.stringify({ order_id: orderId })
+            });
+            const result = await response.json();
+            if (result.code === CODE_SUCCESS) {
+                showSuccessToast('收货确认成功，感谢您的购买！');
+                setTimeout(() => loadOrderDetail(orderId), 1500);
+            } else {
+                alert(result.msg || '操作失败，请重试');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="ri-checkbox-circle-line"></i> 确认收货';
+            }
+        } catch (e) {
+            console.error('确认收货失败:', e);
+            alert('操作失败，请重试');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="ri-checkbox-circle-line"></i> 确认收货';
+        }
+    }
+
+    // ===== 加载订单详情 =====
+    async function loadOrderDetail(orderId) {
+        const content = document.getElementById('orderDetailContent');
+        content.innerHTML = `<div class="empty-placeholder"><i class="ri-loader-4-line ri-spin"></i><p>加载中...</p></div>`;
+
+        try {
+            const res = await apiFetch(`/api/orderDetail/${orderId}`, { method: 'GET' });
+            const result = await res.json();
+
+            if (result.code === CODE_SUCCESS && result.data) {
+                renderOrderDetail(result.data);
+                // 更新页面标题
+                document.title = `订单 #${orderId} - 网络书城`;
+            } else if (result.code === CODE_NEED_LOGIN || result.code === CODE_INVALID_TOKEN) {
+                window.location.href = '/page/LoginPage';
+            } else {
+                content.innerHTML = `
+                    <div class="empty-placeholder">
+                        <i class="ri-file-damage-line"></i>
+                        <p>${escapeHtml(result.msg) || '订单不存在或无权访问'}</p>
+                        <button onclick="goBackToOrders()" style="margin-top:1rem;">
+                            <i class="ri-arrow-left-line"></i> 返回订单列表
+                        </button>
+                    </div>`;
+            }
+        } catch (e) {
+            console.error('加载订单详情失败:', e);
+            content.innerHTML = `
+                <div class="empty-placeholder">
+                    <i class="ri-error-warning-line"></i>
+                    <p>加载失败，请稍后重试</p>
+                    <button onclick="loadOrderDetail(${orderId})" style="margin-top:1rem;">重试</button>
+                    <button onclick="goBackToOrders()" style="margin-top:0.5rem; margin-left:0.5rem; background:var(--gray-200); color:var(--gray-800);">返回</button>
+                </div>`;
+        }
+    }
+
+    // 书籍详情跳转
+    function gotoBookDetail(bookId) {
+        if (bookId) {
+            window.location.href = `/page/BooksPage?book_id=${bookId}`;
+        }
+    }
+    window.gotoBookDetail = gotoBookDetail;
+
+    // ===== 页面初始化 =====
+    document.addEventListener('DOMContentLoaded', async function () {
+        // 验证登录状态
+        const isLogged = await checkAuth();
+        const authArea = document.getElementById('auth-area');
+        const guestArea = document.getElementById('guest-area');
+
+        if (!isLogged) {
+            authArea.style.display = 'none';
+            guestArea.style.display = 'flex';
+            alert('请先登录后访问');
+            window.location.href = '/page/LoginPage';
+            return;
+        }
+
+        authArea.style.display = 'flex';
+        guestArea.style.display = 'none';
+
+        // 从 URL 参数读取 order_id
+        const params = new URLSearchParams(window.location.search);
+        const orderId = params.get('order_id');
+
+        if (!orderId || isNaN(Number(orderId)) || Number(orderId) <= 0) {
+            document.getElementById('orderDetailContent').innerHTML = `
+                <div class="empty-placeholder">
+                    <i class="ri-file-damage-line"></i>
+                    <p>订单 ID 无效</p>
+                    <button onclick="goBackToOrders()" style="margin-top:1rem;">
+                        <i class="ri-arrow-left-line"></i> 返回订单列表
+                    </button>
+                </div>`;
+            return;
+        }
+
+        await loadOrderDetail(Number(orderId));
+    });
+
+</script>
+</body>
+</html>

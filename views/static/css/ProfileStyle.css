@@ -191,3 +191,133 @@
         font-size: 0.85rem;
     }
 }
+
+/* 订单列表头部 */
+.orders-list-header {
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--gray-200);
+}
+
+/* 订单卡片：可点击效果 */
+.order-item-clickable {
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    padding: 1rem 0.75rem;
+    transition: background 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+.order-item-clickable:hover {
+    background: var(--gray-50);
+    box-shadow: var(--shadow-sm);
+    transform: translateX(2px);
+}
+
+/* 订单号文字 */
+.order-id-text {
+    font-size: 0.95rem;
+    color: var(--gray-800);
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+.order-id-text i {
+    color: var(--primary);
+}
+
+/* 书籍预览标签 */
+.order-books-preview {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin: 0.6rem 0 0.4rem 0;
+}
+.order-book-preview {
+    background: var(--gray-100);
+    color: var(--gray-600);
+    font-size: 0.78rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 20px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    white-space: nowrap;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.order-book-preview i {
+    color: var(--primary-light);
+    flex-shrink: 0;
+}
+.order-book-more {
+    background: rgba(79, 70, 229, 0.08);
+    color: var(--primary);
+}
+
+/* 订单底部信息行 */
+.order-item-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.6rem;
+}
+.order-time {
+    font-size: 0.8rem;
+    color: var(--gray-600);
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+.order-amount {
+    font-size: 0.9rem;
+    color: var(--gray-800);
+}
+.order-detail-hint {
+    font-size: 0.8rem;
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    gap: 0.1rem;
+    font-weight: 500;
+}
+
+/* 订单状态 cancelled */
+.order-status.cancelled {
+    background: #fee2e2;
+    color: #991b1b;
+}
+.order-status.pending {
+    background: #fef9c3;
+    color: #713f12;
+}
+
+/* 面包屑 */
+.breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.9rem;
+    color: var(--gray-600);
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+}
+.breadcrumb a {
+    color: var(--gray-600);
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    transition: color 0.2s;
+}
+.breadcrumb a:hover {
+    color: var(--primary);
+}
+.breadcrumb-sep {
+    color: var(--gray-200);
+    font-size: 1.1rem;
+}
+.breadcrumb-current {
+    color: var(--gray-800);
+    font-weight: 500;
+}

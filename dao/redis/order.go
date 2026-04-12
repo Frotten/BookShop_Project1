@@ -86,6 +86,18 @@ func GetUserOrdersInfo(UserID int64) ([]*models.Order, []int64, error) {
 	return Orders, missIDs, nil
 }
 
+func OrderFromRedisHash(orderID int64, data map[string]string) *models.Order {
+	if len(data) == 0 {
+		return nil
+	}
+	o := parseOrder(data)
+	if o == nil {
+		return nil
+	}
+	o.OrderID = orderID
+	return o
+}
+
 func parseOrder(data map[string]string) *models.Order {
 	if len(data) == 0 {
 		return nil
@@ -97,20 +109,27 @@ func parseOrder(data map[string]string) *models.Order {
 		UserID:     UserID,
 		TotalPrice: TotalPrice,
 		Status:     int8(Status),
+		CreatedAt:  data["created_at"],
 	}
 }
 
 func SetUserOrdersInfo(Orders []*models.Order, missIDs []int64) error {
-	if len(missIDs) == 0 || len(Orders) == 0 {
+	if len(Orders) == 0 {
 		return nil
+	}
+	if len(missIDs) == 0 {
+		for _, Order := range Orders {
+			missIDs = append(missIDs, Order.OrderID)
+		}
+	}
+	missSet := make(map[int64]struct{}, len(missIDs))
+	for _, id := range missIDs {
+		missSet[id] = struct{}{}
 	}
 	missMap := make(map[int64]*models.Order, len(missIDs))
 	for _, order := range Orders {
-		for _, missID := range missIDs {
-			if order.OrderID == missID {
-				missMap[missID] = order
-				break
-			}
+		if _, ok := missSet[order.OrderID]; ok {
+			missMap[order.OrderID] = order
 		}
 	}
 	if len(missMap) == 0 {
@@ -139,34 +158,52 @@ func SetUserOrdersInfo(Orders []*models.Order, missIDs []int64) error {
 	return err
 }
 
-func GetOrderItemsInfo(OrderViews []*models.OrderView) {
-	for _, order := range OrderViews {
-		pipe := RDB.Pipeline()
-		SKey := "items:order:" + strconv.FormatInt(order.OrderID, 10)
-		Res, err := pipe.SMembers(ctx, SKey).Result()
-		if err != nil {
-			continue
-		}
-		var Items []*models.OrderItem
-		for _, IDStr := range Res {
-			ID, _ := strconv.ParseInt(IDStr, 10, 64)
-			key := "order:items:" + IDStr
-			data, _ := pipe.HGetAll(ctx, key).Result()
-			BookID, _ := strconv.ParseInt(data["book_id"], 10, 64)
-			Price, _ := strconv.ParseInt(data["price"], 10, 64)
-			Quantity, _ := strconv.ParseInt(data["quantity"], 10, 64)
-			Item := &models.OrderItem{
-				ID:       ID,
-				OrderID:  order.OrderID,
-				BookID:   BookID,
-				Price:    Price,
-				Quantity: Quantity,
-			}
-			Items = append(Items, Item)
-		}
-		_, err = pipe.Exec(ctx)
-		if err == nil {
-			order.Items = Items
-		}
+func TryLoadOrderItemsIntoView(ov *models.OrderView) bool {
+	SKey := "items:order:" + strconv.FormatInt(ov.OrderID, 10)
+	members, err := RDB.SMembers(ctx, SKey).Result()
+	if err != nil || len(members) == 0 {
+		return false
 	}
+	pipe := RDB.Pipeline()
+	cmds := make([]*redis.MapStringStringCmd, len(members))
+	for i, idStr := range members {
+		cmds[i] = pipe.HGetAll(ctx, "order:items:"+idStr)
+	}
+	if _, err := pipe.Exec(ctx); err != nil {
+		return false
+	}
+	items := make([]*models.OrderItem, 0, len(members))
+	for i, idStr := range members {
+		data, err := cmds[i].Result()
+		if err != nil || len(data) == 0 {
+			return false
+		}
+		id, _ := strconv.ParseInt(idStr, 10, 64)
+		bookID, _ := strconv.ParseInt(data["book_id"], 10, 64)
+		price, _ := strconv.ParseInt(data["price"], 10, 64)
+		qty, _ := strconv.ParseInt(data["quantity"], 10, 64)
+		Book, _ := GetBookByBookID(bookID)
+		items = append(items, &models.OrderItem{
+			ID:       id,
+			OrderID:  ov.OrderID,
+			BookID:   bookID,
+			Price:    price,
+			Quantity: qty,
+			Title:    Book.Title,
+		})
+	}
+	ov.Items = items
+	return true
+}
+
+// UpdateOrderStatusInCache 与库内状态一致化；订单主档 miss 时仅更新已有 hash。
+func UpdateOrderStatusInCache(orderID int64, status int8) error {
+	key := "order:" + strconv.FormatInt(orderID, 10)
+	return RDB.HSet(ctx, key, "status", status).Err()
+}
+
+// GetOrderHash 读取订单主档缓存（可能为空 map）。
+func GetOrderHash(orderID int64) (map[string]string, error) {
+	key := "order:" + strconv.FormatInt(orderID, 10)
+	return RDB.HGetAll(ctx, key).Result()
 }

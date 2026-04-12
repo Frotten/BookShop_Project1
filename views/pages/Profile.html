@@ -52,10 +52,7 @@
 </div>
 <script src="/static/js/CommonScript.js"></script>
 <script>
-    //    我的订单列表
-    //    GET /api/user/orders
-    //    响应格式：{ code: 1000, data: [ { order_id: string, total_amount: number(单位：分), status: string, created_at: string } ] }
-    //    状态枚举：pending(待付款), paid(已付款), shipped(已发货), completed(已完成), cancelled(已取消)
+
     let currentTab = 'comments';
 
     function escapeHtml(str) {
@@ -147,12 +144,9 @@
         }
         let html = `<div style="margin-bottom:0.5rem;"><strong>📝 我的评论 (${comments.length})</strong></div>`;
         comments.forEach(cmt => {
-            // 根据 CommentBook 结构，使用正确的字段名
             const commentContent = cmt.comment || '';
             const commentTime = cmt.comment_time || '';
             const bookID = cmt.book_id;
-
-            // 如果是被删除的评论，显示特殊样式
             const isDeleted = cmt.status === 2;
             const contentDisplay = isDeleted ? '<span style="color:#94a3b8;font-style:italic;">[该评论已被删除]</span>' : escapeHtml(commentContent);
 
@@ -352,7 +346,6 @@
 
                 setTimeout(() => {
                     loadMyOrders();
-
                     const ordersTab = document.querySelector('.tab-btn[data-tab="orders"]');
                     if (ordersTab) {
                         switchTab('orders');
@@ -374,11 +367,27 @@
         }
     }
 
-    // 我的订单
+    // ========== 我的订单（修复 + 升级） ==========
+
+    /**
+     * 将后端 int8 状态码映射为可读文字和样式类
+     * Order.Status: 0=待付款, 1=已付款, 2=已发货, 3=已完成, -1=已取消
+     */
+    function getOrderStatus(status) {
+        switch (Number(status)) {
+            case 0:  return { text: '待付款', cls: 'pending' };
+            case 1:  return { text: '已付款', cls: 'paid' };
+            case 2:  return { text: '已发货', cls: 'shipped' };
+            case 3:  return { text: '已完成', cls: 'completed' };
+            case -1: return { text: '已取消', cls: 'cancelled' };
+            default: return { text: '未知状态', cls: '' };
+        }
+    }
+
     async function loadMyOrders() {
         setPanelLoading(true);
         try {
-            const res = await apiFetch('/api/user/orders', { method: 'GET' });
+            const res = await apiFetch('/api/userOrders', { method: 'GET' });
             const result = await res.json();
             if (result.code === 1000) {
                 const orders = result.data || [];
@@ -394,37 +403,58 @@
 
     function renderOrdersList(orders) {
         const panel = document.getElementById('dynamicPanel');
-        if (!orders.length) {
-            panel.innerHTML = `<div class="empty-placeholder"><i class="ri-receipt-line"></i><p>暂无订单，去逛逛心仪的书籍吧~</p><a href="/page/HomePage"><button>去首页</button></a></div>`;
+        if (!orders || !orders.length) {
+            panel.innerHTML = `
+                <div class="empty-placeholder">
+                    <i class="ri-receipt-line"></i>
+                    <p>暂无订单，去逛逛心仪的书籍吧~</p>
+                    <a href="/page/HomePage"><button style="margin-top:1rem;"><i class="ri-book-shelf-line"></i> 去首页</button></a>
+                </div>`;
             return;
         }
-        let html = `<div style="margin-bottom:1rem;"><strong>📦 历史订单 (${orders.length})</strong></div>`;
+
+        let html = `<div class="orders-list-header"><strong>📦 历史订单 (${orders.length})</strong></div>`;
+
         orders.forEach(order => {
-            let statusClass = '';
-            let statusText = '';
-            switch(order.status) {
-                case 'pending': statusText = '待付款'; statusClass = ''; break;
-                case 'paid': statusText = '已付款'; statusClass = 'paid'; break;
-                case 'shipped': statusText = '已发货'; statusClass = 'shipped'; break;
-                case 'completed': statusText = '已完成'; statusClass = 'completed'; break;
-                case 'cancelled': statusText = '已取消'; statusClass = ''; break;
-                default: statusText = order.status;
+            const { text: statusText, cls: statusClass } = getOrderStatus(order.status);
+            const amountYuan = (order.total_price / 100).toFixed(2);
+
+            // 预览前3本书名
+            let previewHtml = '';
+            if (order.Items && order.Items.length > 0) {
+                const previewItems = order.Items.slice(0, 3);
+                previewHtml = previewItems.map(item =>
+                    `<span class="order-book-preview"><i class="ri-book-2-line"></i> ${escapeHtml(item.title || ('书籍#' + item.book_id))} ×${item.quantity}</span>`
+                ).join('');
+                if (order.Items.length > 3) {
+                    previewHtml += `<span class="order-book-preview order-book-more">+${order.Items.length - 3} 件</span>`;
+                }
             }
-            const amountYuan = (order.total_amount / 100).toFixed(2);
+
             html += `
-                <div class="order-item">
+                <div class="order-item order-item-clickable" onclick="gotoOrderDetail(${order.order_id})">
                     <div class="item-header">
-                        <span><strong>订单号：</strong>${escapeHtml(order.order_id)}</span>
+                        <span class="order-id-text"><i class="ri-file-list-3-line"></i> 订单号：<strong>${escapeHtml(String(order.order_id))}</strong></span>
                         <span class="order-status ${statusClass}">${statusText}</span>
                     </div>
-                    <div class="content-text">
-                        金额：<span class="price-amount">￥${amountYuan}</span>
-                        <span style="margin-left:1rem;">下单时间：${formatDate(order.created_at)}</span>
+                    ${previewHtml ? `<div class="order-books-preview">${previewHtml}</div>` : ''}
+                    <div class="order-item-footer">
+                        <span class="order-time"><i class="ri-time-line"></i> ${formatDate(order.created_at)}</span>
+                        <span class="order-amount">合计：<span class="price-amount">￥${amountYuan}</span></span>
+                        <span class="order-detail-hint"><i class="ri-arrow-right-s-line"></i> 查看详情</span>
                     </div>
                 </div>
             `;
         });
+
         panel.innerHTML = html;
+    }
+
+    // 跳转到订单详情页
+    function gotoOrderDetail(orderId) {
+        if (orderId) {
+            window.location.href = `/page/OrderDetailPage?order_id=${orderId}`;
+        }
     }
 
     // 统一根据当前选项卡加载内容
@@ -450,7 +480,6 @@
     // 切换选项卡
     function switchTab(tabId) {
         currentTab = tabId;
-        // 更新按钮样式
         document.querySelectorAll('.tab-btn').forEach(btn => {
             if (btn.dataset.tab === tabId) {
                 btn.classList.add('active');
@@ -468,8 +497,9 @@
         }
     };
 
-    // 暴露一些全局函数以便 onclick 调用
+    // 暴露全局函数
     window.gotoBookDetail = gotoBookDetail;
+    window.gotoOrderDetail = gotoOrderDetail;
     window.loadMyComments = loadMyComments;
     window.loadMyRatings = loadMyRatings;
     window.loadMyCart = loadMyCart;
@@ -477,19 +507,15 @@
 
     // ---------- 页面初始化 ----------
     document.addEventListener("DOMContentLoaded", async function() {
-        // 1. 先验证登录状态，未登录则跳转登录页
-        const isLogged = await checkAuth();  // CommonScript 中已有
+        const isLogged = await checkAuth();
         const authArea = document.getElementById("auth-area");
         const guestArea = document.getElementById("guest-area");
         if (isLogged) {
             authArea.style.display = "flex";
             guestArea.style.display = "none";
-            // 加载用户个人信息
             await loadUserProfile();
-            // 默认加载第一个选项卡 (我的评论)
             switchTab('comments');
         } else {
-            // 未登录或 token 无效，跳转登录页
             authArea.style.display = "none";
             guestArea.style.display = "flex";
             alert("请先登录后访问个人中心");
@@ -497,7 +523,6 @@
             return;
         }
 
-        // 绑定选项卡点击事件
         document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.addEventListener('click', function(e) {
                 const tab = this.dataset.tab;
@@ -505,7 +530,6 @@
             });
         });
 
-        // 监听购物车更新事件，自动刷新
         document.addEventListener('cartUpdated', function(e) {
             if (currentTab === 'cart') {
                 loadMyCart();

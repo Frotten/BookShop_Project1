@@ -4,7 +4,6 @@ import (
 	"Project1_Shop/dao/mysql"
 	"Project1_Shop/dao/redis"
 	"Project1_Shop/models"
-	"fmt"
 	"strconv"
 
 	"go.uber.org/zap"
@@ -192,10 +191,8 @@ func GetTopScoreList() ([]*models.ListBook, models.ResCode) {
 			continue
 		}
 		if T.BookID == -1 {
-			// 合并并发请求，只有一个会执行函数体
 			v, err, _ := redis.G.Do(strconv.FormatInt(BookID, 10), func() (interface{}, error) {
 				Book, err := mysql.GetBookByID(BookID)
-				fmt.Println("BookID:", BookID, "Score:", Score)
 				if err != nil {
 					return nil, err
 				}

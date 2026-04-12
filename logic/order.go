@@ -67,13 +67,28 @@ func CreateOrder(orderParam models.OrderRequest, UserID int64) models.ResCode {
 	return models.CodeSuccess
 }
 
+func ReduceStock(orderParam models.OrderRequest) models.ResCode {
+	for _, item := range orderParam.Items {
+		rows := mysql.ReduceStockByBookID(item.BookID, item.Quantity)
+		if rows <= 0 {
+			return models.CodeInSufficient
+		}
+		err := redis.ReduceStockByBookID(item.BookID, item.Quantity)
+		if err != nil {
+			_ = redis.DeleteBookCache(item.BookID)
+			return models.CodeRedisError
+		}
+	}
+	return models.CodeSuccess
+}
+
 func GetUserOrder(UserID int64) ([]*models.OrderView, models.ResCode) {
 	z, err, _ := redis.G.Do(strconv.FormatInt(UserID, 10), func() (interface{}, error) {
 		Orders, missIDs, err := redis.GetUserOrdersInfo(UserID)
 		if err != nil {
 			return nil, err
 		}
-		if len(missIDs) > 0 {
+		if len(missIDs) > 0 || len(Orders) == 0 {
 			Orders, err := mysql.GetUserOrdersInfo(UserID)
 			if err != nil {
 				return nil, err
@@ -109,8 +124,115 @@ func GetUserOrder(UserID int64) ([]*models.OrderView, models.ResCode) {
 	return z.([]*models.OrderView), models.CodeSuccess
 }
 
-func GetOrderItems(OrderViews []*models.OrderView) models.ResCode {
-	z, err, _ := redis.G.Do("GetOrderItems", func() (interface{}, error) {
-		Orders, missIDs, err := redis.GetOrderItemsInfo(OrderViews)
-	})
+func GetOrderItems(userID int64, orderViews []*models.OrderView) models.ResCode {
+	for _, ov := range orderViews {
+		if ov == nil || ov.UserID != userID {
+			return models.CodeOrderNotExist
+		}
+		if redis.TryLoadOrderItemsIntoView(ov) {
+			continue
+		}
+		items, err := mysql.GetOrderItemsByOrderID(ov.OrderID)
+		if err != nil {
+			return models.CodeMySQLError
+		}
+		for _, item := range items {
+			Book, _ := GetBookByID(item.BookID)
+			item.Title = Book.Title
+		}
+		ov.Items = items
+		if len(items) > 0 {
+			if err := redis.SaveOrderItems(items); err != nil {
+				return models.CodeRedisError
+			}
+		}
+	}
+	return models.CodeSuccess
+}
+
+func GetOrderDetailSecure(userID, orderID int64) (*models.OrderView, models.ResCode) {
+	data, err := redis.GetOrderHash(orderID)
+	if err != nil {
+		return nil, models.CodeRedisError
+	}
+	var base *models.Order
+	if len(data) > 0 {
+		base = redis.OrderFromRedisHash(orderID, data)
+		if base == nil {
+			base, err = mysql.GetOrderByIDAndUser(orderID, userID)
+			if err != nil {
+				return nil, models.CodeOrderNotExist
+			}
+			if err := redis.SaveOrder(base); err != nil {
+				return nil, models.CodeRedisError
+			}
+		} else if base.UserID != userID {
+			return nil, models.CodeOrderNotExist
+		}
+	} else {
+		base, err = mysql.GetOrderByIDAndUser(orderID, userID)
+		if err != nil {
+			return nil, models.CodeOrderNotExist
+		}
+		if err := redis.SaveOrder(base); err != nil {
+			return nil, models.CodeRedisError
+		}
+	}
+	ov := &models.OrderView{
+		OrderID:    base.OrderID,
+		UserID:     base.UserID,
+		TotalPrice: base.TotalPrice,
+		Status:     base.Status,
+		CreatedAt:  base.CreatedAt,
+	}
+	if redis.TryLoadOrderItemsIntoView(ov) {
+		return ov, models.CodeSuccess
+	}
+	items, err := mysql.GetOrderItemsByOrderID(orderID)
+	if err != nil {
+		return nil, models.CodeMySQLError
+	}
+	for _, item := range items {
+		Book, _ := GetBookByID(item.BookID)
+		item.Title = Book.Title
+	}
+	ov.Items = items
+	if len(items) > 0 {
+		if err := redis.SaveOrderItems(items); err != nil {
+			return nil, models.CodeRedisError
+		}
+	}
+	return ov, models.CodeSuccess
+}
+
+func ConfirmOrder(userID, orderID int64) models.ResCode {
+	rows, err := mysql.ConfirmOrderAtomic(orderID, userID)
+	if err != nil {
+		return models.CodeMySQLError
+	}
+	if rows > 0 {
+		if err := redis.UpdateOrderStatusInCache(orderID, 1); err != nil {
+			return models.CodeRedisError
+		}
+		return models.CodeSuccess
+	}
+	o, err := mysql.GetOrderByIDAndUser(orderID, userID)
+	if err != nil {
+		return models.CodeOrderNotExist
+	}
+	if o.Status != 0 {
+		return models.CodeOrderAlreadyConfirmed
+	}
+	return models.CodeOrderNotExist
+}
+
+func CancelOrder(orderID, userID int64) models.ResCode { //修改订单状态为-1，恢复库存数量，库存的缓存更新，订单的缓存直接删除
+	rows, err := mysql.SetCancelStatus(orderID, userID)
+	if rows <= 0 {
+		return models.CodeOrderNotExist
+	}
+	if err != nil {
+		return models.CodeMySQLError
+	}
+
 }

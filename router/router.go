@@ -46,6 +46,9 @@ func SetUp() *gin.Engine {
 			Login.DELETE("/cart", controllers.ClearCartHandle)
 			Login.POST("/orderCreate", controllers.CreateOrderHandle)
 			Login.GET("/userOrders", controllers.GetUserOrderHandle)
+			Login.GET("/orderDetail/:order_id", controllers.GetOrderDetailHandle)
+			Login.POST("/orderConfirm", controllers.ConfirmOrderHandle)
+			Login.POST("/cancelOrder", controllers.CancelOrderHandle)
 		}
 	}
 	v2 := r.Group("/page")
@@ -59,6 +62,7 @@ func SetUp() *gin.Engine {
 		User := v2.Use(middlewares.CookieAuthMiddleware())
 		{
 			User.GET("/ProfilePage", controllers.ProfilePageHandle)
+			User.GET("/OrderDetailPage", controllers.OrderDetailPageHandle)
 		}
 		Admin := v2.Use(middlewares.CookieAuthMiddleware(), middlewares.AdminOnlyMiddleware())
 		{

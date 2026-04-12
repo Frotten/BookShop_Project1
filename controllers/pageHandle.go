@@ -53,3 +53,7 @@ func UpdateBookPageHandle(c *gin.Context) {
 func BookDetailPageHandle(c *gin.Context) {
 	c.HTML(http.StatusOK, "BookDetail.html", nil)
 }
+
+func OrderDetailPageHandle(c *gin.Context) {
+	c.HTML(http.StatusOK, "OrderDetail.html", nil)
+}

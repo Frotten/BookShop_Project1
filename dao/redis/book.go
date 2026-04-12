@@ -2,8 +2,10 @@ package redis
 
 import (
 	"Project1_Shop/models"
+	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math/rand"
 	"strconv"
 	"time"
@@ -137,6 +139,20 @@ func SetBookCache(Book *models.BookCache, Score int64) error {
 		return err
 	}
 	RDB.Del(ctx, GetEmpty(key))
+	RDB.Expire(ctx, key, RandTTL(BookTime))
+	return nil
+}
+
+func ReduceStockByBookID(BookID, Quantity int64) error {
+	key := "book:" + strconv.FormatInt(BookID, 10)
+	newStock, err := RDB.HIncrBy(context.Background(), key, "stock", -Quantity).Result()
+	if err != nil {
+		return err
+	}
+	if newStock < 0 {
+		RDB.HIncrBy(context.Background(), key, "stock", Quantity)
+		return fmt.Errorf("库存不足")
+	}
 	RDB.Expire(ctx, key, RandTTL(BookTime))
 	return nil
 }
