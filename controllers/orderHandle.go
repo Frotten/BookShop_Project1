@@ -35,3 +35,25 @@ func CreateOrderHandle(c *gin.Context) {
 	}
 	HandleSuccess(c, nil)
 }
+
+func GetUserOrderHandle(c *gin.Context) {
+	UserID, ok := c.Get("userID")
+	if !ok || UserID == nil {
+		zap.L().Error("GetUserOrderHandle failed: UserID not found in context")
+		HandleResponse(c, models.CodeServerBusy)
+		return
+	}
+	orderViews, res := logic.GetUserOrder(UserID.(int64))
+	if res != models.CodeSuccess {
+		zap.L().Error("GetUserOrderHandle failed")
+		HandleResponse(c, res)
+		return
+	}
+	res = logic.GetOrderItems(orderViews)
+	if res != models.CodeSuccess {
+		zap.L().Error("GetOrderItemsHandle failed")
+		HandleResponse(c, res)
+		return
+	}
+	HandleSuccess(c, orderViews)
+}

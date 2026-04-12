@@ -45,6 +45,7 @@ func SetUp() *gin.Engine {
 			Login.DELETE("/cart/:book_id", controllers.DeleteCartItemHandle)
 			Login.DELETE("/cart", controllers.ClearCartHandle)
 			Login.POST("/orderCreate", controllers.CreateOrderHandle)
+			Login.GET("/userOrders", controllers.GetUserOrderHandle)
 		}
 	}
 	v2 := r.Group("/page")

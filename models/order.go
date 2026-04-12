@@ -9,13 +9,22 @@ type Order struct {
 }
 
 type OrderItem struct {
-	ID       int64 `gorm:"primaryKey;autoIncrement"`
-	OrderID  int64 `gorm:"index;not null"`
-	BookID   int64 `gorm:"index;not null"`
-	Price    int64 `gorm:"not null"` // 下单时价格
-	Quantity int64 `gorm:"not null"`
+	ID       int64 `gorm:"primaryKey;autoIncrement" json:"id"`
+	OrderID  int64 `gorm:"index;not null" json:"order_id"`
+	BookID   int64 `gorm:"index;not null" json:"book_id"`
+	Price    int64 `gorm:"not null" json:"price"` // 下单时价格
+	Quantity int64 `gorm:"not null" json:"quantity"`
 }
 
 type OrderRequest struct {
 	Items []OrderParam `json:"items" binding:"required,min=1,dive"`
+}
+
+type OrderView struct {
+	OrderID    int64  `json:"order_id"`
+	UserID     int64  `json:"user_id"`
+	TotalPrice int64  `json:"total_price"`
+	Status     int8   `json:"status"`
+	CreatedAt  string `json:"created_at"`
+	Items      []*OrderItem
 }

@@ -9,3 +9,9 @@ func CreateOrder(Order *models.Order) error {
 func CreateOrderItems(OrderItems []*models.OrderItem) error {
 	return DB.Create(&OrderItems).Error
 }
+
+func GetUserOrdersInfo(UserID int64) ([]*models.Order, error) {
+	var Ans []*models.Order
+	err := DB.Where("user_id = ?", UserID).Find(&Ans).Error
+	return Ans, err
+}

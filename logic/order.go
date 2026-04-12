@@ -4,6 +4,7 @@ import (
 	"Project1_Shop/dao/mysql"
 	"Project1_Shop/dao/redis"
 	"Project1_Shop/models"
+	"strconv"
 	"time"
 )
 
@@ -64,4 +65,52 @@ func CreateOrder(orderParam models.OrderRequest, UserID int64) models.ResCode {
 		return models.CodeRedisError
 	}
 	return models.CodeSuccess
+}
+
+func GetUserOrder(UserID int64) ([]*models.OrderView, models.ResCode) {
+	z, err, _ := redis.G.Do(strconv.FormatInt(UserID, 10), func() (interface{}, error) {
+		Orders, missIDs, err := redis.GetUserOrdersInfo(UserID)
+		if err != nil {
+			return nil, err
+		}
+		if len(missIDs) > 0 {
+			Orders, err := mysql.GetUserOrdersInfo(UserID)
+			if err != nil {
+				return nil, err
+			}
+			var Ans []*models.OrderView
+			for _, order := range Orders {
+				Ans = append(Ans, &models.OrderView{
+					OrderID:    order.OrderID,
+					UserID:     order.UserID,
+					TotalPrice: order.TotalPrice,
+					Status:     order.Status,
+					CreatedAt:  order.CreatedAt,
+				})
+			}
+			_ = redis.SetUserOrdersInfo(Orders, missIDs)
+			return Ans, nil
+		}
+		var Ans []*models.OrderView
+		for _, order := range Orders {
+			Ans = append(Ans, &models.OrderView{
+				OrderID:    order.OrderID,
+				UserID:     order.UserID,
+				TotalPrice: order.TotalPrice,
+				Status:     order.Status,
+				CreatedAt:  order.CreatedAt,
+			})
+		}
+		return Ans, nil
+	})
+	if err != nil {
+		return nil, models.CodeServerBusy
+	}
+	return z.([]*models.OrderView), models.CodeSuccess
+}
+
+func GetOrderItems(OrderViews []*models.OrderView) models.ResCode {
+	z, err, _ := redis.G.Do("GetOrderItems", func() (interface{}, error) {
+		Orders, missIDs, err := redis.GetOrderItemsInfo(OrderViews)
+	})
 }
