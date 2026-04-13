@@ -113,13 +113,7 @@ func CancelOrderHandle(c *gin.Context) {
 		HandleResponse(c, models.CodeInvalidParam)
 		return
 	}
-	UserID, ok := c.Get("userID")
-	if !ok || UserID == nil {
-		zap.L().Error("ConfirmOrderHandle: UserID not found in context")
-		HandleResponse(c, models.CodeServerBusy)
-		return
-	}
-	res := logic.CancelOrder(p.OrderID, UserID.(int64))
+	res := logic.CancelOrder(p.OrderID)
 	if res != models.CodeSuccess {
 		zap.L().Error("CancelOrder failed")
 		HandleResponse(c, res)

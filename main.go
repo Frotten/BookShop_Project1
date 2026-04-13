@@ -5,6 +5,7 @@ import (
 	"Project1_Shop/dao/redis"
 	"Project1_Shop/logger"
 	"Project1_Shop/pkg/Worker"
+	"Project1_Shop/pkg/mq"
 	"Project1_Shop/pkg/snowflake"
 	"Project1_Shop/router"
 	"Project1_Shop/settings"
@@ -24,41 +25,57 @@ import (
 
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
-	//1，加载配置
+	// 加载配置
 	if err := settings.Init(); err != nil {
 		fmt.Printf("init settings failed, err:%v\n", err)
 		return
 	}
-	//2，初始化日志
+	// 初始化日志
 	if err := logger.Init(settings.Conf.LogConfig); err != nil {
 		fmt.Printf("init logger failed, err:%v\n", err)
 		return
 	}
 	defer zap.L().Sync()
 	zap.L().Debug("logger init success...")
-	//3，初始化MySQL连接
+	// 初始化 MySQL 连接
 	if err := mysql.Init(settings.Conf.MySQLConfig); err != nil {
 		fmt.Printf("init mysql failed, err:%v\n", err)
 		return
 	}
 	defer mysql.Close()
 	mysql.AutoMigration()
-	//4，初始化Redis连接
+	// 初始化 Redis 连接
 	if err := redis.Init(settings.Conf.RedisConfig); err != nil {
 		fmt.Printf("init redis failed, err:%v\n", err)
 		return
 	}
 	defer redis.Close()
-	//初始化雪花算法
+	// 初始化 RabbitMQ（声明队列拓扑 + 保持长连接）
+	if err := mq.Init(settings.Conf.RabbitMQConfig); err != nil {
+		fmt.Printf("init RabbitMQ failed, err:%v\n", err)
+		return
+	}
+	defer mq.Close()
+	// 启动订单超时取消消费者（监听 order.expired 死信队列）
+	if err := mq.StartOrderExpiredConsumer(); err != nil {
+		fmt.Printf("start order expired consumer failed, err:%v\n", err)
+		return
+	}
+	// 启动待发货队列消费者（监听 order.shipping 队列）
+	if err := mq.StartOrderShippingConsumer(); err != nil {
+		fmt.Printf("start order shipping consumer failed, err:%v\n", err)
+		return
+	}
+	// 初始化雪花算法
 	if err := snowflake.Init(settings.Conf.StartTime, int64(settings.Conf.MachineID)); err != nil {
 		fmt.Printf("init snowflake failed, err: %v\n", err)
 		return
 	}
-	//5，注册路由
+	// 注册路由
 	r := router.SetUp()
-	//启动工作池,并通过ctx使其可以自动关闭
+	// 启动工作池
 	go Worker.StartRateWorker(ctx)
-	//启动服务（优雅关机）
+	// 启动服务（优雅关机）
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%d", viper.GetInt("app.port")),
 		Handler: r,

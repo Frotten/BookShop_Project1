@@ -4,8 +4,11 @@ import (
 	"Project1_Shop/dao/mysql"
 	"Project1_Shop/dao/redis"
 	"Project1_Shop/models"
+	"Project1_Shop/pkg/mq"
 	"strconv"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 func GetBookPriceByIDs(BookIDs []int64) (map[int64]int64, error) {
@@ -20,6 +23,7 @@ func GetBookPriceByIDs(BookIDs []int64) (map[int64]int64, error) {
 	return bookPriceMap, nil
 }
 
+// CreateOrder 创建订单，成功后将订单 ID 推入 MQ 待支付队列（30min 超时自动取消）。
 func CreateOrder(orderParam models.OrderRequest, UserID int64) models.ResCode {
 	var OrderItems []*models.OrderItem
 	var BookIDs []int64
@@ -40,12 +44,10 @@ func CreateOrder(orderParam models.OrderRequest, UserID int64) models.ResCode {
 		TotalPrice: TotalPrice,
 		CreatedAt:  time.Now().Format(models.TimeParseLayout),
 	}
-	err = mysql.CreateOrder(Order)
-	if err != nil {
+	if err = mysql.CreateOrder(Order); err != nil {
 		return models.CodeMySQLError
 	}
-	err = redis.SaveOrder(Order)
-	if err != nil {
+	if err = redis.SaveOrder(Order); err != nil {
 		return models.CodeRedisError
 	}
 	for _, item := range orderParam.Items {
@@ -56,13 +58,21 @@ func CreateOrder(orderParam models.OrderRequest, UserID int64) models.ResCode {
 			OrderID:  Order.OrderID,
 		})
 	}
-	err = mysql.CreateOrderItems(OrderItems)
-	if err != nil {
+	if err = mysql.CreateOrderItems(OrderItems); err != nil {
 		return models.CodeMySQLError
 	}
-	err = redis.SaveOrderItems(OrderItems)
-	if err != nil {
+	if err = redis.SaveOrderItems(OrderItems); err != nil {
 		return models.CodeRedisError
+	}
+
+	// 推入 MQ 待支付队列，30 分钟内未 Confirm 则自动取消
+	if err = mq.PublishOrderPending(Order.OrderID); err != nil {
+		// MQ 推送失败：记录 Error 日志，但不阻断订单创建流程。
+		// 此时订单已写入 DB，可依赖后台定时扫描兜底（或告警人工处理）。
+		zap.L().Error("PublishOrderPending failed",
+			zap.Int64("order_id", Order.OrderID),
+			zap.Error(err),
+		)
 	}
 	return models.CodeSuccess
 }
@@ -214,6 +224,12 @@ func ConfirmOrder(userID, orderID int64) models.ResCode {
 		if err := redis.UpdateOrderStatusInCache(orderID, 1); err != nil {
 			return models.CodeRedisError
 		}
+		if err := mq.PublishOrderShipping(orderID); err != nil {
+			zap.L().Error("PublishOrderShipping failed",
+				zap.Int64("order_id", orderID),
+				zap.Error(err),
+			)
+		}
 		return models.CodeSuccess
 	}
 	o, err := mysql.GetOrderByIDAndUser(orderID, userID)
@@ -226,8 +242,8 @@ func ConfirmOrder(userID, orderID int64) models.ResCode {
 	return models.CodeOrderNotExist
 }
 
-func CancelOrder(orderID, userID int64) models.ResCode {
-	rows, err := mysql.SetCancelStatus(orderID, userID)
+func CancelOrder(orderID int64) models.ResCode {
+	rows, err := mysql.SetCancelStatusByID(orderID)
 	if rows <= 0 {
 		return models.CodeOrderNotExist
 	}

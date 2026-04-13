@@ -41,6 +41,15 @@ func GetOrderByIDAndUser(orderID, userID int64) (*models.Order, error) {
 	return &o, nil
 }
 
+func GetOrderByID(orderID int64) (*models.Order, error) {
+	var o models.Order
+	err := DB.Where("order_id = ?", orderID).First(&o).Error
+	if err != nil {
+		return nil, err
+	}
+	return &o, nil
+}
+
 func GetOrderItemsByOrderID(orderID int64) ([]*models.OrderItem, error) {
 	var items []*models.OrderItem
 	err := DB.Where("order_id = ?", orderID).Find(&items).Error
@@ -57,9 +66,9 @@ func ConfirmOrderAtomic(orderID, userID int64) (rowsAffected int64, err error) {
 	return res.RowsAffected, nil
 }
 
-func SetCancelStatus(orderID, userID int64) (rowsAffected int64, err error) {
+func SetCancelStatusByID(orderID int64) (rowsAffected int64, err error) {
 	res := DB.Model(&models.Order{}).
-		Where("order_id = ? AND user_id = ?", orderID, userID).
+		Where("order_id = ? AND status = ?", orderID, 0).
 		Update("status", -1)
 	if res.Error != nil {
 		return 0, res.Error

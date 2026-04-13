@@ -11,10 +11,11 @@ import (
 var Conf = new(App)
 
 type App struct {
-	*AppConfig   `mapstructure:"app"`
-	*LogConfig   `mapstructure:"log"`
-	*MySQLConfig `mapstructure:"mysql"`
-	*RedisConfig `mapstructure:"redis"`
+	*AppConfig      `mapstructure:"app"`
+	*LogConfig      `mapstructure:"log"`
+	*MySQLConfig    `mapstructure:"mysql"`
+	*RedisConfig    `mapstructure:"redis"`
+	*RabbitMQConfig `mapstructure:"rabbitmq"`
 }
 
 type AppConfig struct {
@@ -52,9 +53,16 @@ type RedisConfig struct {
 	PoolSize int    `mapstructure:"pool_size"`
 }
 
+type RabbitMQConfig struct {
+	User     string `mapstructure:"user"`
+	Password string `mapstructure:"password"`
+	Port     int    `mapstructure:"port"`
+	Host     string `mapstructure:"host"`
+}
+
 func Init() (err error) {
-	viper.SetConfigName("config") //配置文件名称
-	viper.SetConfigType("yaml")   //配置文件的类型(专用于从远程获取配置文件时指定文件类型)
+	viper.SetConfigName("config")
+	viper.SetConfigType("yaml")
 	viper.AddConfigPath(".")
 	err = viper.ReadInConfig()
 	if err != nil {
@@ -65,7 +73,7 @@ func Init() (err error) {
 		fmt.Printf("viper.Unmarshal() faild, err:%v\n", err)
 	}
 	viper.WatchConfig()
-	viper.OnConfigChange(func(e fsnotify.Event) { //当Config发生变化时，就会触发这里的函数
+	viper.OnConfigChange(func(e fsnotify.Event) {
 		fmt.Println("Config file changed:", e.Name)
 		if err = viper.Unmarshal(&Conf); err != nil {
 			fmt.Printf("viper.Unmarshal() faild, err:%v\n", err)
