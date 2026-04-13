@@ -9,7 +9,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func CreateOrderHandle(c *gin.Context) {
+func CreateOrderHandle(c *gin.Context) { //还需要将生成的订单发送到MQ中等待处理或超时过期
 	var orderParam models.OrderRequest
 	if err := c.ShouldBindJSON(&orderParam); err != nil {
 		zap.L().Error("CreateOrderHandle failed", zap.Error(err))

@@ -196,14 +196,22 @@ func TryLoadOrderItemsIntoView(ov *models.OrderView) bool {
 	return true
 }
 
-// UpdateOrderStatusInCache 与库内状态一致化；订单主档 miss 时仅更新已有 hash。
 func UpdateOrderStatusInCache(orderID int64, status int8) error {
 	key := "order:" + strconv.FormatInt(orderID, 10)
 	return RDB.HSet(ctx, key, "status", status).Err()
 }
 
-// GetOrderHash 读取订单主档缓存（可能为空 map）。
 func GetOrderHash(orderID int64) (map[string]string, error) {
 	key := "order:" + strconv.FormatInt(orderID, 10)
 	return RDB.HGetAll(ctx, key).Result()
+}
+
+func DeleteOrderItem(ID int64) error {
+	Key := "order:items:" + strconv.FormatInt(ID, 10)
+	return RDB.Del(ctx, Key).Err()
+}
+
+func DeleteOrder(orderID int64) error {
+	key := "order:" + strconv.FormatInt(orderID, 10)
+	return RDB.Del(ctx, key).Err()
 }

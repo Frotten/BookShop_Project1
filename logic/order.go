@@ -226,7 +226,7 @@ func ConfirmOrder(userID, orderID int64) models.ResCode {
 	return models.CodeOrderNotExist
 }
 
-func CancelOrder(orderID, userID int64) models.ResCode { //修改订单状态为-1，恢复库存数量，库存的缓存更新，订单的缓存直接删除
+func CancelOrder(orderID, userID int64) models.ResCode {
 	rows, err := mysql.SetCancelStatus(orderID, userID)
 	if rows <= 0 {
 		return models.CodeOrderNotExist
@@ -234,5 +234,21 @@ func CancelOrder(orderID, userID int64) models.ResCode { //修改订单状态为
 	if err != nil {
 		return models.CodeMySQLError
 	}
-
+	Items, err := mysql.GetOrderItemsByOrderID(orderID)
+	if err != nil {
+		return models.CodeMySQLError
+	}
+	for _, item := range Items {
+		err := mysql.RecoverStockByBookID(item.BookID, item.Quantity)
+		if err != nil {
+			return models.CodeMySQLError
+		}
+		err = redis.UpdateBookCacheStock(item.BookID, item.Quantity)
+		if err != nil {
+			return models.CodeRedisError
+		}
+		_ = redis.DeleteOrder(item.OrderID)
+		_ = redis.DeleteOrderItem(item.ID)
+	}
+	return models.CodeSuccess
 }

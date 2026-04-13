@@ -20,6 +20,12 @@ func ReduceStockByBookID(BookID, Quantity int64) int64 {
 		Update("stock", gorm.Expr("stock - ?", Quantity)).RowsAffected
 }
 
+func RecoverStockByBookID(BookID, Quantity int64) error {
+	return DB.Model(&models.Book{}).
+		Where("book_id = ?", BookID).
+		Update("stock", gorm.Expr("stock + ?", Quantity)).Error
+}
+
 func GetUserOrdersInfo(UserID int64) ([]*models.Order, error) {
 	var Ans []*models.Order
 	err := DB.Where("user_id = ?", UserID).Order("order_id DESC").Find(&Ans).Error
