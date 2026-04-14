@@ -47,8 +47,8 @@ func SetUp() *gin.Engine {
 			Login.POST("/orderCreate", controllers.CreateOrderHandle)
 			Login.GET("/userOrders", controllers.GetUserOrderHandle)
 			Login.GET("/orderDetail/:order_id", controllers.GetOrderDetailHandle)
-			Login.POST("/orderConfirm", controllers.ConfirmOrderHandle)
-			Login.POST("/cancelOrder", controllers.CancelOrderHandle)
+			Login.POST("/orderPay", controllers.OrderPayHandle)
+			Login.POST("/orderCancel", controllers.OrderCancelHandle)
 		}
 	}
 	v2 := r.Group("/page")

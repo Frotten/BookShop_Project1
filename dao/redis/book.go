@@ -401,5 +401,5 @@ func SetUserRatings(UserID int64, Ratings []*models.UserRating) error {
 
 func UpdateBookCacheStock(BookID, Quantity int64) error {
 	key := "book:" + strconv.FormatInt(BookID, 10)
-	return RDB.HSet(ctx, key, "stock", Quantity).Err()
+	return RDB.HIncrBy(ctx, key, "stock", Quantity).Err()
 }

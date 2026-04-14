@@ -29,5 +29,5 @@ redis:
 rabbitmq:
   host: "192.168.56.101"
   port: 5672
-  user: "guest"
-  password: "guest"
+  user: "TestUser"
+  password: "Test"

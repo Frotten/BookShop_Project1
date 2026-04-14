@@ -169,14 +169,33 @@
             });
         }
 
-        // 确认收货按钮（仅已发货状态显示）
+        // 操作按钮（根据订单状态显示不同按钮）
         let actionHtml = '';
-        if (currentStatusNum === 2) {
+        if (currentStatusNum === 0) {
+            // 待付款状态：显示取消和支付按钮
             actionHtml = `
                 <div class="od-action-bar">
+                    <button class="btn-cancel-order" id="cancelOrderBtn" onclick="cancelOrder(${order.order_id}, '确认要取消此订单吗？')">
+                        <i class="ri-close-circle-line"></i> 取消订单
+                    </button>
+                    <button class="btn-pay-order" id="payOrderBtn" onclick="payOrder(${order.order_id})">
+                        <i class="ri-bank-card-line"></i> 立即支付
+                    </button>
+                </div>
+            `;
+        } else if (currentStatusNum === 1 || currentStatusNum === 2) {
+            // 已付款或已发货状态：显示取消按钮
+            const cancelTip = currentStatusNum === 1 ? '确认要取消此订单吗？' : '确认要取消此订单吗？商品已在运输途中。';
+            actionHtml = `
+                <div class="od-action-bar">
+                    <button class="btn-cancel-order" id="cancelOrderBtn" onclick="cancelOrder(${order.order_id}, '${cancelTip}')">
+                        <i class="ri-close-circle-line"></i> 取消订单
+                    </button>
+                    ${currentStatusNum === 2 ? `
                     <button class="btn-confirm-receipt" id="confirmReceiptBtn" onclick="confirmReceipt(${order.order_id})">
                         <i class="ri-checkbox-circle-line"></i> 确认收货
                     </button>
+                    ` : ''}
                 </div>
             `;
         }
@@ -268,6 +287,67 @@
             alert('操作失败，请重试');
             btn.disabled = false;
             btn.innerHTML = '<i class="ri-checkbox-circle-line"></i> 确认收货';
+        }
+    }
+
+    // ===== 取消订单 =====
+    async function cancelOrder(orderId, tipMessage) {
+        const btn = document.getElementById('cancelOrderBtn');
+        if (!btn) return;
+
+        if (!confirm(tipMessage || '确认要取消此订单吗？')) return;
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> 处理中...';
+
+        try {
+            const response = await apiFetch('/api/orderCancel', {
+                method: 'POST',
+                body: JSON.stringify({ order_id: orderId })
+            });
+            const result = await response.json();
+            if (result.code === CODE_SUCCESS) {
+                showSuccessToast('订单已取消');
+                setTimeout(() => loadOrderDetail(orderId), 1500);
+            } else {
+                alert(result.msg || '取消失败，请重试');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="ri-close-circle-line"></i> 取消订单';
+            }
+        } catch (e) {
+            console.error('取消订单失败:', e);
+            alert('操作失败，请重试');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="ri-close-circle-line"></i> 取消订单';
+        }
+    }
+
+    // ===== 支付订单 =====
+    async function payOrder(orderId) {
+        const btn = document.getElementById('payOrderBtn');
+        if (!btn) return;
+        if (!confirm('确认支付此订单吗？')) return;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> 支付中...';
+        try {
+            const response = await apiFetch('/api/orderPay', {
+                method: 'POST',
+                body: JSON.stringify({ order_id: orderId })
+            });
+            const result = await response.json();
+            if (result.code === CODE_SUCCESS) {
+                showSuccessToast('支付成功！');
+                setTimeout(() => loadOrderDetail(orderId), 1500);
+            } else {
+                alert(result.msg || '支付失败，请重试');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="ri-bank-card-line"></i> 立即支付';
+            }
+        } catch (e) {
+            console.error('支付订单失败:', e);
+            alert('操作失败，请重试');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="ri-bank-card-line"></i> 立即支付';
         }
     }
 

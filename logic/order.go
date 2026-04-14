@@ -23,7 +23,6 @@ func GetBookPriceByIDs(BookIDs []int64) (map[int64]int64, error) {
 	return bookPriceMap, nil
 }
 
-// CreateOrder 创建订单，成功后将订单 ID 推入 MQ 待支付队列（30min 超时自动取消）。
 func CreateOrder(orderParam models.OrderRequest, UserID int64) models.ResCode {
 	var OrderItems []*models.OrderItem
 	var BookIDs []int64
@@ -64,11 +63,7 @@ func CreateOrder(orderParam models.OrderRequest, UserID int64) models.ResCode {
 	if err = redis.SaveOrderItems(OrderItems); err != nil {
 		return models.CodeRedisError
 	}
-
-	// 推入 MQ 待支付队列，30 分钟内未 Confirm 则自动取消
 	if err = mq.PublishOrderPending(Order.OrderID); err != nil {
-		// MQ 推送失败：记录 Error 日志，但不阻断订单创建流程。
-		// 此时订单已写入 DB，可依赖后台定时扫描兜底（或告警人工处理）。
 		zap.L().Error("PublishOrderPending failed",
 			zap.Int64("order_id", Order.OrderID),
 			zap.Error(err),
@@ -215,8 +210,8 @@ func GetOrderDetailSecure(userID, orderID int64) (*models.OrderView, models.ResC
 	return ov, models.CodeSuccess
 }
 
-func ConfirmOrder(userID, orderID int64) models.ResCode {
-	rows, err := mysql.ConfirmOrderAtomic(orderID, userID)
+func OrderPay(userID, orderID int64) models.ResCode {
+	rows, err := mysql.PayOrderAtomic(orderID, userID)
 	if err != nil {
 		return models.CodeMySQLError
 	}
@@ -242,7 +237,7 @@ func ConfirmOrder(userID, orderID int64) models.ResCode {
 	return models.CodeOrderNotExist
 }
 
-func CancelOrder(orderID int64) models.ResCode {
+func OrderCancel(orderID int64) models.ResCode {
 	rows, err := mysql.SetCancelStatusByID(orderID)
 	if rows <= 0 {
 		return models.CodeOrderNotExist

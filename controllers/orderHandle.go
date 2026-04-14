@@ -86,7 +86,7 @@ func GetOrderDetailHandle(c *gin.Context) {
 	HandleSuccess(c, ov)
 }
 
-func ConfirmOrderHandle(c *gin.Context) {
+func OrderPayHandle(c *gin.Context) {
 	var p models.OrderConfirmParam
 	if err := c.ShouldBindJSON(&p); err != nil {
 		HandleResponse(c, models.CodeInvalidParam)
@@ -94,28 +94,29 @@ func ConfirmOrderHandle(c *gin.Context) {
 	}
 	UserID, ok := c.Get("userID")
 	if !ok || UserID == nil {
-		zap.L().Error("ConfirmOrderHandle: UserID not found in context")
+		zap.L().Error("OrderPayHandle: UserID not found in context")
 		HandleResponse(c, models.CodeServerBusy)
 		return
 	}
-	res := logic.ConfirmOrder(UserID.(int64), p.OrderID)
+	res := logic.OrderPay(UserID.(int64), p.OrderID)
 	if res != models.CodeSuccess {
-		zap.L().Error("ConfirmOrder failed")
+		zap.L().Error("OrderPay failed")
 		HandleResponse(c, res)
 		return
 	}
 	HandleSuccess(c, nil)
 }
 
-func CancelOrderHandle(c *gin.Context) {
+func OrderCancelHandle(c *gin.Context) {
 	var p models.OrderConfirmParam
 	if err := c.ShouldBindJSON(&p); err != nil {
+		zap.L().Error("OrderCancelHandle failed", zap.Error(err))
 		HandleResponse(c, models.CodeInvalidParam)
 		return
 	}
-	res := logic.CancelOrder(p.OrderID)
+	res := logic.OrderCancel(p.OrderID)
 	if res != models.CodeSuccess {
-		zap.L().Error("CancelOrder failed")
+		zap.L().Error("OrderCancel failed")
 		HandleResponse(c, res)
 		return
 	}

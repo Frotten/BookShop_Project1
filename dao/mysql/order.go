@@ -56,7 +56,7 @@ func GetOrderItemsByOrderID(orderID int64) ([]*models.OrderItem, error) {
 	return items, err
 }
 
-func ConfirmOrderAtomic(orderID, userID int64) (rowsAffected int64, err error) {
+func PayOrderAtomic(orderID, userID int64) (rowsAffected int64, err error) {
 	res := DB.Model(&models.Order{}).
 		Where("order_id = ? AND user_id = ? AND status = ?", orderID, userID, 0).
 		Update("status", 1)

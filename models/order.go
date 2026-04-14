@@ -25,7 +25,7 @@ type OrderView struct {
 	OrderID    int64  `json:"order_id"`
 	UserID     int64  `json:"user_id"`
 	TotalPrice int64  `json:"total_price"`
-	Status     int8   `json:"status"`
+	Status     int8   `json:"status"` //-1已删除 0未支付 1已支付待发货 2已发货待收货 3已收货
 	CreatedAt  string `json:"created_at"`
 	Items      []*OrderItem
 }
