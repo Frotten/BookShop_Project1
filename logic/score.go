@@ -97,7 +97,7 @@ func RateNewBook(p *models.UserRateBook) models.ResCode { //这里必须保证My
 	return models.CodeSuccess
 }
 
-func RateUpdateBook(p *models.UserRateBook) models.ResCode {
+func RateUpdateBook(p *models.UserRateBook) models.ResCode { //尝试利用仿造MQ实现异步
 	RB, err := mysql.GetRateBookByID(p.BookID)
 	if err != nil {
 		return models.CodeMySQLError
