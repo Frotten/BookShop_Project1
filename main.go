@@ -61,11 +61,6 @@ func main() {
 		fmt.Printf("start order expired consumer failed, err:%v\n", err)
 		return
 	}
-	// 启动待发货队列消费者（监听 order.shipping 队列）
-	if err := mq.StartOrderShippingConsumer(); err != nil {
-		fmt.Printf("start order shipping consumer failed, err:%v\n", err)
-		return
-	}
 	// 初始化雪花算法
 	if err := snowflake.Init(settings.Conf.StartTime, int64(settings.Conf.MachineID)); err != nil {
 		fmt.Printf("init snowflake failed, err: %v\n", err)

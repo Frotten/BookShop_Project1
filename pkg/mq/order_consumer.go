@@ -11,10 +11,6 @@ func StartOrderExpiredConsumer() error {
 	return StartConsumer(OrderExpiredQueue, handleOrderExpired)
 }
 
-func StartOrderShippingConsumer() error {
-	return StartConsumer(OrderShippingQueue, handleOrderShipping)
-}
-
 func handleOrderExpired(orderID int64) bool {
 	zap.L().Info("order expired, start cancel", zap.Int64("order_id", orderID))
 	order, err := mysql.GetOrderByID(orderID)
@@ -64,14 +60,5 @@ func handleOrderExpired(orderID int64) bool {
 		_ = redis.DeleteOrderItem(item.ID)
 	}
 	zap.L().Info("order expired and cancelled successfully", zap.Int64("order_id", orderID))
-	return true
-}
-
-func handleOrderShipping(orderID int64) bool { //当请求被传输到这里，想想看，如果是你，你会做什么？答案已经呼之欲出了
-	//支付请求发送到这里，接下来需要在Admin界面显现请求，并在Admin界面确认发货，并转入下一阶段，然后，修改订单状态，等待用户确认收货
-	//TODO：那么，要做的事情就只有一个了，那就是把信息保存起来，以便Admin检索
-	zap.L().Info("order confirmed, entered shipping queue",
-		zap.Int64("order_id", orderID),
-	)
 	return true
 }

@@ -123,6 +123,40 @@ func BookListToCache(book *models.Book) *models.ListBook {
 	}
 }
 
+func GetBooksByTitle(Title string) ([]*models.BookCache, error) {
+	z, err, _ := redis.G.Do(Title, func() (interface{}, error) {
+		ids, err := redis.GetBookIDsByTitle(Title)
+		if err != nil || len(ids) <= 0 {
+			Books, err := mysql.GetBooksByTitle(Title)
+			var BookCache []*models.BookCache
+			for _, Book := range Books {
+				BookCache = append(BookCache, BookToCache(Book))
+			}
+			if err != nil {
+				return nil, err
+			}
+			go func() {
+				for _, Book := range BookCache {
+					_ = redis.SetBookCache(Book, Book.Score)
+				}
+			}()
+			return BookCache, nil
+		}
+		Books, err := GetBooksByIDs(ids)
+		if err != nil {
+			return nil, err
+		}
+		return Books, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	if z != nil {
+		return z.([]*models.BookCache), nil
+	}
+	return nil, nil
+}
+
 func GetBookByID(ID int64) (*models.BookCache, error) {
 	bookCache, err := redis.GetBookByBookID(ID)
 	if err == nil && bookCache.BookID != -1 {

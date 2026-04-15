@@ -151,7 +151,7 @@ func RateBook(p *models.UserRateBook) models.ResCode {
 
 func GetTopScoreList() ([]*models.ListBook, models.ResCode) {
 	results, err := redis.GetScoreList()
-	if err != nil { //查找失败，默认原排行榜丢失，从MySQL中重新获取排行榜
+	if err != nil || len(results) <= 0 { //查找失败，默认原排行榜丢失，从MySQL中重新获取排行榜
 		Books, _, err := mysql.GetBooksPageByScore(1)
 		if err != nil {
 			return nil, models.CodeMySQLError

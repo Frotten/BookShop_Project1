@@ -14,8 +14,6 @@ import (
 const (
 	// OrderPendingQueue 订单待支付队列（30分钟 TTL，超时死信 → 取消队列）
 	OrderPendingQueue = "order.pending"
-	// OrderShippingQueue 待发货队列（用户确认后进入，无超时限制）
-	OrderShippingQueue = "order.shipping"
 	// OrderDeadLetterExchange 死信交换机 & 路由键
 	OrderDeadLetterExchange   = "order.dlx"
 	OrderDeadLetterRoutingKey = "order.expired"
@@ -78,16 +76,6 @@ func Init(cfg *settings.RabbitMQConfig) error {
 	); err != nil {
 		return fmt.Errorf("declare pending queue failed: %w", err)
 	}
-	if _, err := ch.QueueDeclare(
-		OrderShippingQueue,
-		true,
-		false,
-		false,
-		false,
-		nil,
-	); err != nil {
-		return fmt.Errorf("declare shipping queue failed: %w", err)
-	}
 
 	globalConn = conn
 	globalCh = ch
@@ -129,10 +117,6 @@ func getChannel() (*amqp.Channel, error) {
 
 func PublishOrderPending(orderID int64) error {
 	return publish(OrderPendingQueue, strconv.FormatInt(orderID, 10))
-}
-
-func PublishOrderShipping(orderID int64) error {
-	return publish(OrderShippingQueue, strconv.FormatInt(orderID, 10))
 }
 
 func publish(queue, body string) error {

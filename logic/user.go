@@ -148,7 +148,7 @@ func GetCommentsByUser(UserID int64, UserName string) ([]*models.CommentBook, mo
 func GetRatingsByUser(UserID int64) ([]*models.UserRating, models.ResCode) {
 	z, err, _ := redis.G.Do(strconv.FormatInt(UserID, 10), func() (interface{}, error) {
 		Res, err := redis.GetUserRatingsByUserID(UserID)
-		if err == nil {
+		if err == nil && len(Res) > 0 {
 			return Res, nil
 		}
 		URB, err := mysql.GetUserRatingByUserID(UserID)

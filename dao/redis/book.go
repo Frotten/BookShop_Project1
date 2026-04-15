@@ -235,6 +235,23 @@ func SetBookSummary(List *models.ListBook) error {
 	return err
 }
 
+func GetBookIDsByTitle(keyword string) ([]int64, error) {
+	res, err := RDB.Do(ctx, "FT.SEARCH", "idx:book", keyword+"*", "NOCONTENT").Result()
+	if err != nil {
+		return nil, err
+	}
+	data := res.([]interface{})
+	var ids []int64
+	for i := 1; i < len(data); i++ {
+		id, err := strconv.ParseInt(data[i].(string), 10, 64)
+		if err != nil {
+			continue
+		}
+		ids = append(ids, id)
+	}
+	return ids, nil
+}
+
 func GetBookByBookID(BookID int64) (*models.BookCache, error) {
 	key := "book:" + strconv.FormatInt(BookID, 10)
 	ok := CheckEmpty(key)

@@ -219,12 +219,6 @@ func OrderPay(userID, orderID int64) models.ResCode {
 		if err := redis.UpdateOrderStatusInCache(orderID, 1); err != nil {
 			return models.CodeRedisError
 		}
-		if err := mq.PublishOrderShipping(orderID); err != nil {
-			zap.L().Error("PublishOrderShipping failed",
-				zap.Int64("order_id", orderID),
-				zap.Error(err),
-			)
-		}
 		return models.CodeSuccess
 	}
 	o, err := mysql.GetOrderByIDAndUser(orderID, userID)
