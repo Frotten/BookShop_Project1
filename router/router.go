@@ -31,6 +31,7 @@ func SetUp() *gin.Engine {
 		//v1.GET("/topSale", controllers.TopSaleHandle)
 		v1.GET("/topScore", controllers.TopScoreHandle)
 		v1.GET("/comments", controllers.CommentsHandle)
+		v1.GET("/getBookTitle/:title", controllers.GetBookByTitleHandle)
 		Login := v1.Use(middlewares.JWTAuthMiddleware(), middlewares.CheckLoginOnlyMiddleware())
 		{
 			Login.GET("/userInfo", controllers.GetUserInfoHandle)
@@ -82,6 +83,7 @@ func SetUp() *gin.Engine {
 			book.GET("/getbook/:book_id", controllers.GetBookParamHandle)
 			book.DELETE("/delete/:book_id", controllers.AdminDeleteBookHandle)
 			book.POST("/update", controllers.AdminUpdateBookHandle)
+			book.GET("/getBookTitle/:title", controllers.GetBookByTitleHandle)
 		}
 		//user := v3.Group("/user")
 		//{

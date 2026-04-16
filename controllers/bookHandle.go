@@ -75,6 +75,17 @@ func GetBookParamHandle(c *gin.Context) {
 	HandleSuccess(c, Book)
 }
 
+func GetBookByTitleHandle(c *gin.Context) {
+	Title := c.Param("title")
+	Books, err := logic.GetBooksByTitle(Title)
+	if err != nil {
+		zap.L().Error("GetBooksByTitleHandle failed", zap.Error(err))
+		HandleResponse(c, models.CodeBookNotExist)
+		return
+	}
+	HandleSuccess(c, Books)
+}
+
 func AdminDeleteBookHandle(c *gin.Context) {
 	IDString := c.Param("book_id")
 	ID, err := strconv.ParseInt(IDString, 10, 64)

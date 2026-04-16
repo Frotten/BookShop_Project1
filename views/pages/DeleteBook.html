@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <title>删除书籍 - 网络书城</title>
     <link rel="stylesheet" href="/static/css/CommonStyle.css">
+    <link rel="stylesheet" href="/static/css/DeleteBook.css">
     <link href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css" rel="stylesheet"/>
 </head>
 <body>
@@ -12,7 +13,9 @@
     <div class="nav-right">
         <div id="auth-area" style="display:none; align-items:center; gap:10px;">
             <span><i class="ri-admin-line"></i> 管理员</span>
-            <a href="/page/AdminHomePage" class="btn-link"><i class="ri-arrow-left-line"></i> 返回首页</a>
+            <a href="/page/AdminHomePage" class="btn-link">
+                <i class="ri-arrow-left-line"></i> 返回首页
+            </a>
             <button onclick="logout()"><i class="ri-logout-box-line"></i> 退出登录</button>
         </div>
         <div id="guest-area" style="display:none;">
@@ -20,118 +23,230 @@
         </div>
     </div>
 </header>
+
 <div class="container">
     <h2><i class="ri-delete-bin-line"></i> 删除书籍</h2>
-    <p>输入书籍ID查询后删除</p>
-    <div style="display:flex; gap:30px; margin-top:20px;">
-        <div class="profile-card" style="width:380px;">
-            <h3 style="margin-bottom:16px;"><i class="ri-search-line"></i> 查询书籍</h3>
-            <input id="bookID" type="number" placeholder="请输入书籍ID" style="margin-bottom:16px;">
-            <button style="width:100%; margin-bottom:12px;" onclick="searchBook()">
-                <i class="ri-search-line"></i> 查询书籍
-            </button>
-            <button style="width:100%; background:#ef4444;" onclick="deleteBook()">
+    <p>通过 ID 直接查询，或在搜索框中输入书名/作者模糊查找后删除</p>
+
+    <div style="display:flex; gap:30px; margin-top:20px; flex-wrap:wrap;">
+
+        <!-- 左侧查询面板 -->
+        <div class="profile-card" style="width:360px; flex-shrink:0;">
+
+            <!-- 搜索方式 Tab -->
+            <div class="search-tab-bar">
+                <button class="search-tab active" id="tabById"   onclick="switchTab('id')">
+                    <i class="ri-hashtag"></i> ID 查询
+                </button>
+                <button class="search-tab"        id="tabByName" onclick="switchTab('name')">
+                    <i class="ri-search-line"></i> 模糊搜索
+                </button>
+            </div>
+
+            <!-- ID 查询 -->
+            <div id="panelById">
+                <div class="search-input-row">
+                    <input id="bookID" type="number" placeholder="请输入书籍 ID"
+                           onkeydown="if(event.key==='Enter') searchBookById()">
+                    <button onclick="searchBookById()">
+                        <i class="ri-search-line"></i> 查询
+                    </button>
+                </div>
+            </div>
+
+            <!-- 模糊搜索 -->
+            <div id="panelByName" style="display:none;">
+                <div class="search-input-row">
+                    <input id="searchKeyword" type="text"
+                           placeholder="书名、作者、出版社..."
+                           maxlength="80" autocomplete="off"
+                           oninput="onKeywordInput()"
+                           onkeydown="if(event.key==='Enter') doFuzzySearch()">
+                    <button onclick="doFuzzySearch()">
+                        <i class="ri-search-line"></i> 搜索
+                    </button>
+                </div>
+                <div id="searchResultList" style="display:none;">
+                    <div style="font-size:0.8rem; color:var(--gray-600); margin-bottom:0.4rem;" id="searchResultCount"></div>
+                    <div class="search-result-list" id="resultItems"></div>
+                </div>
+            </div>
+
+            <!-- 删除按钮（始终在左侧面板底部） -->
+            <button class="btn-delete" onclick="deleteBook()">
                 <i class="ri-delete-bin-line"></i> 删除书籍
             </button>
         </div>
-        <div class="profile-card" style="flex:1;" id="bookInfo">
+
+        <!-- 右侧书籍信息展示 -->
+        <div class="profile-card" style="flex:1; min-width:280px;" id="bookInfo">
             <h3><i class="ri-information-line"></i> 书籍信息</h3>
             <p style="color:#888;">请先查询书籍</p>
         </div>
     </div>
 </div>
+
 <script src="/static/js/CommonScript.js"></script>
 <script>
     let currentBook = null;
-    async function searchBook() {
-        const id = document.getElementById("bookID").value.trim();
-        if (!id) {
-            alert("请输入书籍ID");
-            return;
-        }
+    let searchDebounceTimer = null;
+
+    // ===== Tab 切换 =====
+    function switchTab(tab) {
+        document.getElementById('tabById').classList.toggle('active',   tab === 'id');
+        document.getElementById('tabByName').classList.toggle('active', tab === 'name');
+        document.getElementById('panelById').style.display   = tab === 'id'   ? 'block' : 'none';
+        document.getElementById('panelByName').style.display = tab === 'name' ? 'block' : 'none';
+        document.getElementById('searchResultList').style.display = 'none';
+    }
+
+    // ===== ID 查询 =====
+    async function searchBookById() {
+        const id = document.getElementById('bookID').value.trim();
+        if (!id) { alert('请输入书籍 ID'); return; }
         try {
-            const res = await apiFetch("/admin/book/getbook/" + id,{
-                method: "GET"
-            })
+            const res = await apiFetch('/admin/book/getbook/' + id, { method: 'GET' });
             const result = await res.json();
-            if (result.code !== 1000) {
-                alert("查询失败：" + result.msg);
-                return;
-            }
+            if (result.code !== 1000) { alert('查询失败：' + result.msg); return; }
             currentBook = result.data;
             renderBook(currentBook);
-        } catch (res) {
-            alert("请求失败");
+        } catch (e) {
+            alert('请求失败');
         }
     }
+
+    // ===== 模糊搜索 =====
+    function onKeywordInput() {
+        clearTimeout(searchDebounceTimer);
+        const kw = document.getElementById('searchKeyword').value.trim();
+        if (!kw) { document.getElementById('searchResultList').style.display = 'none'; return; }
+        searchDebounceTimer = setTimeout(doFuzzySearch, 350);
+    }
+
+    async function doFuzzySearch() {
+        const kw = document.getElementById('searchKeyword').value.trim();
+        if (!kw) return;
+
+        const listWrap   = document.getElementById('searchResultList');
+        const resultItems = document.getElementById('resultItems');
+        listWrap.style.display = 'block';
+        resultItems.innerHTML = '<div class="search-loading-tip"><i class="ri-loader-4-line ri-spin"></i> 搜索中...</div>';
+        document.getElementById('searchResultCount').textContent = '';
+
+        try {
+            const res = await apiFetch(
+                `/api/searchBooks?keyword=${encodeURIComponent(kw)}`,
+                { method: 'GET' }
+            );
+            const result = await res.json();
+            const books = result.code === 1000 ? (result.data || []) : [];
+            renderSearchResults(books, kw);
+        } catch (e) {
+            resultItems.innerHTML = '<div class="search-empty"><i class="ri-wifi-off-line"></i> 搜索失败，请重试</div>';
+        }
+    }
+
+    function renderSearchResults(books, keyword) {
+        const resultItems = document.getElementById('resultItems');
+        document.getElementById('searchResultCount').textContent = `找到 ${books.length} 本书`;
+
+        if (!books.length) {
+            resultItems.innerHTML = `<div class="search-empty"><i class="ri-search-eye-line"></i> 没有找到"${escapeHtml(keyword)}"相关书籍</div>`;
+            return;
+        }
+        let html = '';
+        books.forEach(book => {
+            const priceYuan = (book.price / 100).toFixed(2);
+            const coverSrc  = book.cover_image || '';
+            html += `
+                <div class="result-item" onclick="selectBookFromSearch(${book.book_id}, this)">
+                    ${coverSrc
+                        ? `<img class="result-item-cover" src="${escapeHtml(coverSrc)}" alt="封面" onerror="this.style.display='none'">`
+                        : `<div class="result-item-cover" style="display:flex;align-items:center;justify-content:center;"><i class="ri-book-2-line" style="color:#9ca3af;"></i></div>`
+                    }
+                    <div class="result-item-info">
+                        <div class="result-item-title">${escapeHtml(book.title)}</div>
+                        <div class="result-item-meta">${escapeHtml(book.author)} · ￥${priceYuan}</div>
+                    </div>
+                    <span class="result-item-id">#${book.book_id}</span>
+                </div>
+            `;
+        });
+        resultItems.innerHTML = html;
+    }
+
+    async function selectBookFromSearch(bookId, el) {
+        document.querySelectorAll('.result-item').forEach(e => e.classList.remove('selected'));
+        if (el) el.classList.add('selected');
+        try {
+            const res = await apiFetch('/admin/book/getbook/' + bookId, { method: 'GET' });
+            const result = await res.json();
+            if (result.code !== 1000) { alert('获取书籍详情失败：' + result.msg); return; }
+            currentBook = result.data;
+            renderBook(currentBook);
+        } catch (e) {
+            alert('请求失败');
+        }
+    }
+
+    // ===== 渲染书籍信息 =====
     function renderBook(book) {
-        const panel = document.getElementById("bookInfo");
+        const panel = document.getElementById('bookInfo');
         panel.innerHTML = `
 <h3><i class="ri-information-line"></i> 书籍信息</h3>
-<div style="display:flex; gap:20px; align-items:flex-start; margin-top:10px;">
+<div class="book-detail-grid">
     <div style="flex-shrink:0;">
-        <img
-            src="${book.cover_image}"
-            alt="封面"
-            style="
-                width:140px;
-                height:200px;
-                object-fit:cover;
-                border-radius:8px;
-                box-shadow:0 2px 8px rgba(0,0,0,0.15);
-            "
-        >
+        <img src="${escapeHtml(book.cover_image)}" alt="封面"
+            style="width:140px;height:200px;object-fit:cover;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.15);"
+            onerror="this.style.display='none'">
     </div>
     <div style="flex:1;">
         <p><b><i class="ri-hashtag"></i> ID：</b>${book.book_id}</p>
-        <p><b><i class="ri-book-line"></i> 书名：</b>${book.title}</p>
-        <p><b><i class="ri-pencil-line"></i> 作者：</b>${book.author}</p>
-        <p><b><i class="ri-building-line"></i> 出版：</b>${book.publisher}</p>
+        <p><b><i class="ri-book-line"></i> 书名：</b>${escapeHtml(book.title)}</p>
+        <p><b><i class="ri-pencil-line"></i> 作者：</b>${escapeHtml(book.author)}</p>
+        <p><b><i class="ri-building-line"></i> 出版：</b>${escapeHtml(book.publisher)}</p>
         <p><b><i class="ri-money-cny-circle-line"></i> 价格：</b>￥${(book.price / 100).toFixed(2)}</p>
         <p><b><i class="ri-stock-line"></i> 库存：</b>${book.stock}</p>
         <p><b><i class="ri-star-line"></i> 评分：</b>${(book.score / 100).toFixed(2)}</p>
-        <p><b><i class="ri-price-tag-3-line"></i> 标签：</b>${book.tags}</p>
+        <p><b><i class="ri-price-tag-3-line"></i> 标签：</b>${escapeHtml(String(book.tags || ''))}</p>
     </div>
 </div>
 `;
     }
 
+    // ===== 删除 =====
     async function deleteBook() {
-        if (!currentBook) {
-            alert("请先查询书籍");
-            return;
-        }
-        const ok = confirm("确定删除《" + currentBook.title + "》吗？");
+        if (!currentBook) { alert('请先查询书籍'); return; }
+        const ok = confirm(`确定删除《${currentBook.title}》吗？此操作不可撤销！`);
         if (!ok) return;
         try {
-            const res = await apiFetch("/admin/book/delete/" + currentBook.book_id,{
-                method: "DELETE",
-                body: JSON.stringify({
-                    book_id: currentBook.book_id
-                })
+            const res = await apiFetch('/admin/book/delete/' + currentBook.book_id, {
+                method: 'DELETE',
+                body: JSON.stringify({ book_id: currentBook.book_id })
             });
             const result = await res.json();
             if (result.code === 1000) {
-                alert("删除成功");
-                location.href = "/page/AdminHomePage";
+                alert('删除成功');
+                location.href = '/page/AdminHomePage';
             } else {
-                alert("删除失败：" + result.msg);
+                alert('删除失败：' + result.msg);
             }
-        } catch (res) {
-            alert("请求失败");
+        } catch (e) {
+            alert('请求失败');
         }
     }
-    document.addEventListener("DOMContentLoaded", async function () {
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+    }
+
+    document.addEventListener('DOMContentLoaded', async function () {
         const loggedIn = await checkAuth();
-        const authArea = document.getElementById("auth-area");
-        const guestArea = document.getElementById("guest-area");
-        if (loggedIn) {
-            authArea.style.display = "flex";
-            guestArea.style.display = "none";
-        } else {
-            authArea.style.display = "none";
-            guestArea.style.display = "block";
-        }
+        document.getElementById('auth-area').style.display  = loggedIn ? 'flex' : 'none';
+        document.getElementById('guest-area').style.display = loggedIn ? 'none' : 'block';
     });
 </script>
 </body>

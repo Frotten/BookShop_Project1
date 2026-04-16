@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"math/rand"
 	"strconv"
 	"time"
@@ -237,17 +238,16 @@ func SetBookSummary(List *models.ListBook) error {
 
 func GetBookIDsByTitle(keyword string) ([]int64, error) {
 	res, err := RDB.Do(ctx, "FT.SEARCH", "idx:book", keyword+"*", "NOCONTENT").Result()
+	log.Printf("res type: %T, value: %+v", res, res)
 	if err != nil {
 		return nil, err
 	}
-	data := res.([]interface{})
+	data := res.(map[interface{}]interface{})
 	var ids []int64
-	for i := 1; i < len(data); i++ {
-		id, err := strconv.ParseInt(data[i].(string), 10, 64)
-		if err != nil {
-			continue
-		}
+	for K, V := range data {
+		id, _ := strconv.ParseInt(V.(string), 10, 64)
 		ids = append(ids, id)
+		fmt.Println("K:", K, "V:", V)
 	}
 	return ids, nil
 }

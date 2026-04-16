@@ -38,13 +38,27 @@ func Init(cfg *settings.RedisConfig) (err error) {
 	if err := RDB.Ping(ctx).Err(); err != nil {
 		return err
 	}
-	_, err = RDB.Do(ctx, "FT.CREATE", "idx:book",
-		"ON", "HASH",
-		"PREFIX", "1", "book:",
-		"SCHEMA",
-		"title", "TEXT",
-		"author", "TEXT",
-	).Result()
+	err = RDB.ForEachShard(ctx, func(ctx context.Context, client *redis.Client) error {
+		opt := client.Options()
+		directClient := redis.NewClient(&redis.Options{
+			Addr:     opt.Addr,
+			Password: opt.Password,
+		})
+		defer directClient.Close()
+		_, err := directClient.Do(ctx,
+			"FT.CREATE", "idx:book",
+			"ON", "HASH",
+			"PREFIX", "1", "book:",
+			"SCHEMA",
+			"title", "TEXT",
+			"author", "TEXT",
+			"publisher", "TEXT",
+		).Result()
+		if err != nil && !strings.Contains(err.Error(), "Index already exists") {
+			return err
+		}
+		return nil
+	})
 	if err != nil && !strings.Contains(err.Error(), "Index already exists") {
 		return err
 	}
