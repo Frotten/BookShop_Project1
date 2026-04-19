@@ -52,8 +52,21 @@
                     <i class="ri-search-line"></i> 搜索
                 </button>
             </div>
-            <!-- 搜索结果提示行 -->
-            <div class="search-result-tip" id="searchTip" style="display:none;"></div>
+
+            <!-- 搜索结果下拉列表 -->
+            <div class="search-dropdown" id="searchDropdown">
+                <div class="search-dropdown-header" id="dropdownHeader">
+                    <i class="ri-search-line"></i>
+                    <span id="dropdownHeaderText">搜索中...</span>
+                </div>
+                <div class="search-dropdown-list" id="dropdownList"></div>
+                <div class="dropdown-footer" id="dropdownFooter" style="display:none;">
+                    <a href="#" id="viewAllLink">
+                        <span>查看全部结果</span>
+                        <i class="ri-arrow-right-s-line"></i>
+                    </a>
+                </div>
+            </div>
         </div>
 
         <div class="grid" id="book-grid">
@@ -75,6 +88,9 @@
 
 <script src="/static/js/CommonScript.js"></script>
 <script>
+    let searchTimer = null;
+    let selectedIndex = -1;
+
     document.addEventListener("DOMContentLoaded", function() {
         // 1. 检查登录状态
         checkAuth().then(function(loggedIn) {
@@ -112,6 +128,22 @@
                 window.location.href = `/page/BooksPage?book_id=${item.dataset.bookId}`;
             }
         });
+
+        // 6. 点击其他区域关闭下拉列表
+        document.addEventListener('click', function(e) {
+            const dropdown = document.getElementById('searchDropdown');
+            const wrapper = document.querySelector('.search-bar-wrapper');
+            if (!wrapper.contains(e.target)) {
+                hideDropdown();
+            }
+        });
+
+        // 7. ESC 键关闭下拉列表
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                hideDropdown();
+            }
+        });
     });
 
     // ===== 搜索逻辑 =====
@@ -124,32 +156,58 @@
             btnClear.classList.add('visible');
         } else {
             btnClear.classList.remove('visible');
+            hideDropdown();
+            return;
         }
-        // 防抖 300ms，自动触发搜索
+        // 防抖 350ms，自动触发搜索
         clearTimeout(searchTimer);
         searchTimer = setTimeout(() => {
-            if (val.trim() !== '') {
-                doSearch();
-            }
-        }, 300);
+            doSearch();
+        }, 350);
+    }
+
+    // 显示下拉列表
+    function showDropdown() {
+        const dropdown = document.getElementById('searchDropdown');
+        dropdown.classList.add('active');
+    }
+
+    // 隐藏下拉列表
+    function hideDropdown() {
+        const dropdown = document.getElementById('searchDropdown');
+        dropdown.classList.remove('active');
+        selectedIndex = -1;
+    }
+
+    // 更新下拉列表头部
+    function updateDropdownHeader(keyword, count, isLoading) {
+        const header = document.getElementById('dropdownHeader');
+        const headerText = document.getElementById('dropdownHeaderText');
+        if (isLoading) {
+            headerText.textContent = '搜索中...';
+        } else {
+            headerText.textContent = `关键词 "${escapeHtml(keyword)}" 找到 ${count} 本书`;
+        }
     }
 
     // 执行搜索
     async function doSearch() {
         const keyword = document.getElementById('searchInput').value.trim();
         if (!keyword) {
-            clearSearch();
+            hideDropdown();
             return;
         }
 
-        const grid = document.getElementById('book-grid');
-        const tip = document.getElementById('searchTip');
+        const dropdown = document.getElementById('searchDropdown');
+        const list = document.getElementById('dropdownList');
 
-        grid.innerHTML = `<div class="search-loading"><i class="ri-loader-4-line ri-spin"></i> 搜索中...</div>`;
-        tip.style.display = 'none';
+        // 显示加载状态
+        showDropdown();
+        updateDropdownHeader(keyword, 0, true);
+        list.innerHTML = `<div class="dropdown-loading"><i class="ri-loader-4-line ri-spin"></i> 搜索中...</div>`;
+        document.getElementById('dropdownFooter').style.display = 'none';
 
         try {
-            // 调用后端搜索接口 /api/getBookTitle/:title
             const res = await apiFetch(
                 `/api/getBookTitle/${encodeURIComponent(keyword)}`,
                 { method: 'GET' }
@@ -158,47 +216,110 @@
 
             if (result.code === 1000) {
                 const books = result.data || [];
-                showSearchTip(keyword, books.length);
-                renderBooks(books);
+                renderSearchDropdown(keyword, books);
             } else {
-                alert('搜索失败：' + result.msg);
-                grid.innerHTML = `
-                    <div class="no-result" style="grid-column:1/-1;">
+                list.innerHTML = `
+                    <div class="dropdown-empty">
                         <i class="ri-error-warning-line"></i>
-                        <p>搜索出错，请稍后重试</p>
+                        <p>搜索失败，请稍后重试</p>
                     </div>`;
+                updateDropdownHeader(keyword, 0, false);
             }
         } catch (e) {
             console.error('搜索请求失败:', e);
-            alert('网络异常，请稍后重试');
-            grid.innerHTML = `
-                <div class="no-result" style="grid-column:1/-1;">
+            list.innerHTML = `
+                <div class="dropdown-empty">
                     <i class="ri-wifi-off-line"></i>
                     <p>网络异常，请检查连接</p>
                 </div>`;
+            updateDropdownHeader(keyword, 0, false);
         }
     }
 
-    // 显示搜索结果提示
-    function showSearchTip(keyword, count) {
-        const tip = document.getElementById('searchTip');
-        tip.innerHTML = `
-            <i class="ri-filter-3-line"></i>
-            关键词 <span class="tip-keyword">"${escapeHtml(keyword)}"</span>
-            共找到 <strong>${count}</strong> 本书
-            <span style="margin-left:0.5rem; color:var(--primary); cursor:pointer; font-size:0.85rem;" onclick="clearSearch()">
-                <i class="ri-close-circle-line"></i> 清除
-            </span>
-        `;
-        tip.style.display = 'flex';
+    // 渲染搜索结果下拉列表
+    function renderSearchDropdown(keyword, books) {
+        const list = document.getElementById('dropdownList');
+        const footer = document.getElementById('dropdownFooter');
+        const viewAllLink = document.getElementById('viewAllLink');
+
+        updateDropdownHeader(keyword, books.length, false);
+
+        if (!books || books.length === 0) {
+            list.innerHTML = `
+                <div class="dropdown-empty">
+                    <i class="ri-search-eye-line"></i>
+                    <p>没有找到与 "${escapeHtml(keyword)}" 相关的书籍</p>
+                </div>`;
+            footer.style.display = 'none';
+            return;
+        }
+
+        // 最多显示 5 条结果
+        const displayBooks = books.slice(0, 5);
+        let html = '';
+        displayBooks.forEach((book, index) => {
+            const priceYuan = (book.price / 100).toFixed(2);
+            const score = book.score ? (book.score / 100).toFixed(1) : '暂无';
+            const scoreColor = book.score >= 800 ? '#f59e0b' : '#9ca3af';
+            html += `
+                <a class="dropdown-item" href="/page/BooksPage?book_id=${book.book_id}"
+                   data-index="${index}" data-book-id="${book.book_id}">
+                    <div class="dropdown-book-icon">
+                        <i class="ri-book-2-line"></i>
+                    </div>
+                    <div class="dropdown-item-info">
+                        <div class="dropdown-item-title">${escapeHtml(book.title)}</div>
+                        <div class="dropdown-item-meta">${escapeHtml(book.author || '未知作者')}</div>
+                    </div>
+                    <div class="dropdown-item-score" style="color:${scoreColor};">
+                        <i class="ri-star-smile-fill"></i>
+                        ${score}
+                    </div>
+                    <div class="dropdown-item-price">￥${priceYuan}</div>
+                </a>`;
+        });
+        list.innerHTML = html;
+
+        // 如果结果超过 5 条，显示"查看全部"
+        if (books.length > 5) {
+            footer.style.display = 'block';
+            viewAllLink.href = `/page/BooksPage?keyword=${encodeURIComponent(keyword)}`;
+        } else {
+            footer.style.display = 'none';
+        }
+
+        // 键盘导航
+        setupKeyboardNavigation(displayBooks);
     }
 
-    // 清除搜索，回到全量列表
+    // 键盘上下导航
+    function setupKeyboardNavigation(books) {
+        const input = document.getElementById('searchInput');
+        input.addEventListener('keydown', function(e) {
+            const items = document.querySelectorAll('.dropdown-item');
+            if (items.length === 0) return;
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                selectedIndex = selectedIndex < items.length - 1 ? selectedIndex + 1 : 0;
+                items[selectedIndex].focus();
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                selectedIndex = selectedIndex > 0 ? selectedIndex - 1 : items.length - 1;
+                items[selectedIndex].focus();
+            } else if (e.key === 'Enter' && selectedIndex >= 0) {
+                e.preventDefault();
+                items[selectedIndex].click();
+            }
+        });
+    }
+
+    // 清除搜索
     function clearSearch() {
         document.getElementById('searchInput').value = '';
         document.getElementById('btnClear').classList.remove('visible');
-        document.getElementById('searchTip').style.display = 'none';
-        fetchBooks();
+        hideDropdown();
+        document.getElementById('searchInput').focus();
     }
 
     // ===== 图书列表 =====
@@ -207,7 +328,6 @@
             const res = await apiFetch('/api/getBooksJSON', { method: 'GET' });
             const result = await res.json();
             if (result.code === 1000) {
-                // 注意：getBooksJSON 返回的是 Page 结构，数据在 data.data 中
                 const books = result.data.data || [];
                 renderBooks(books);
             } else {
@@ -224,15 +344,15 @@
         if (!books || books.length === 0) {
             grid.innerHTML = `
                 <div class="no-result" style="grid-column:1/-1;">
-                    <i class="ri-search-eye-line"></i>
-                    <p>没有找到相关书籍</p>
+                    <i class="ri-book-2-line" style="font-size:3rem; opacity:0.4; display:block; margin-bottom:0.75rem;"></i>
+                    <p>暂无书籍</p>
                 </div>`;
             return;
         }
         let html = '';
         books.forEach(book => {
             const priceYuan = (book.price / 100).toFixed(2);
-            const score = (book.score / 100).toFixed(2);
+            const score = book.score ? (book.score / 100).toFixed(2) : '暂无';
             html += `
             <div class="book-card" data-book-id="${book.book_id}">
                 <h3>${escapeHtml(book.title)}</h3>
@@ -253,7 +373,6 @@
         });
         grid.innerHTML = html;
 
-        // 重新绑定点击事件（因为 innerHTML 替换后事件丢失）
         grid.onclick = function(e) {
             const button = e.target.closest('.add-to-cart-btn');
             if (button) {

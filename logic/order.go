@@ -155,7 +155,7 @@ func GetOrderItems(userID int64, orderViews []*models.OrderView) models.ResCode 
 	return models.CodeSuccess
 }
 
-func GetOrderDetailSecure(userID, orderID int64) (*models.OrderView, models.ResCode) {
+func GetOrderDetailSecure(orderID int64) (*models.OrderView, models.ResCode) {
 	data, err := redis.GetOrderHash(orderID)
 	if err != nil {
 		return nil, models.CodeRedisError
@@ -164,18 +164,16 @@ func GetOrderDetailSecure(userID, orderID int64) (*models.OrderView, models.ResC
 	if len(data) > 0 {
 		base = redis.OrderFromRedisHash(orderID, data)
 		if base == nil {
-			base, err = mysql.GetOrderByIDAndUser(orderID, userID)
+			base, err = mysql.GetOrderByID(orderID)
 			if err != nil {
 				return nil, models.CodeOrderNotExist
 			}
 			if err := redis.SaveOrder(base); err != nil {
 				return nil, models.CodeRedisError
 			}
-		} else if base.UserID != userID {
-			return nil, models.CodeOrderNotExist
 		}
 	} else {
-		base, err = mysql.GetOrderByIDAndUser(orderID, userID)
+		base, err = mysql.GetOrderByID(orderID)
 		if err != nil {
 			return nil, models.CodeOrderNotExist
 		}
@@ -219,6 +217,9 @@ func OrderPay(userID, orderID int64) models.ResCode {
 		if err := redis.UpdateOrderStatusInCache(orderID, 1); err != nil {
 			return models.CodeRedisError
 		}
+		if err = redis.CacheOrderID(orderID); err != nil {
+			return models.CodeRedisError
+		}
 		return models.CodeSuccess
 	}
 	o, err := mysql.GetOrderByIDAndUser(orderID, userID)
@@ -256,4 +257,33 @@ func OrderCancel(orderID int64) models.ResCode {
 		_ = redis.DeleteOrderItem(item.ID)
 	}
 	return models.CodeSuccess
+}
+
+func GetShipOrder() ([]*models.OrderView, models.ResCode) {
+	IDs, err := redis.GetShipOrderID()
+	if err != nil || len(IDs) == 0 {
+		IDs, err := mysql.GetShipOrderID()
+		if err != nil {
+			return nil, models.CodeServerBusy
+		}
+		var OV []*models.OrderView
+		for _, ID := range IDs {
+			View, Res := GetOrderDetailSecure(ID)
+			if Res != models.CodeSuccess {
+				continue
+			}
+			OV = append(OV, View)
+		}
+		return OV, models.CodeSuccess
+	}
+	var OV []*models.OrderView
+	for _, ID := range IDs {
+		id, _ := strconv.ParseInt(ID, 10, 64)
+		View, Res := GetOrderDetailSecure(id)
+		if Res != models.CodeSuccess {
+			continue
+		}
+		OV = append(OV, View)
+	}
+	return OV, models.CodeSuccess
 }

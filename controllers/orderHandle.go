@@ -66,19 +66,13 @@ func GetUserOrderHandle(c *gin.Context) {
 }
 
 func GetOrderDetailHandle(c *gin.Context) {
-	UserID, ok := c.Get("userID")
-	if !ok || UserID == nil {
-		zap.L().Error("GetOrderDetailHandle: UserID not found in context")
-		HandleResponse(c, models.CodeServerBusy)
-		return
-	}
 	oidStr := c.Param("order_id")
 	orderID, err := strconv.ParseInt(oidStr, 10, 64)
 	if err != nil || orderID <= 0 {
 		HandleResponse(c, models.CodeInvalidParam)
 		return
 	}
-	ov, res := logic.GetOrderDetailSecure(UserID.(int64), orderID)
+	ov, res := logic.GetOrderDetailSecure(orderID)
 	if res != models.CodeSuccess {
 		HandleResponse(c, res)
 		return
@@ -121,4 +115,14 @@ func OrderCancelHandle(c *gin.Context) {
 		return
 	}
 	HandleSuccess(c, nil)
+}
+
+func GetShipOrderHandle(c *gin.Context) {
+	OV, res := logic.GetShipOrder()
+	if res != models.CodeSuccess {
+		zap.L().Error("GetShipOrderHandle failed")
+		HandleResponse(c, res)
+		return
+	}
+	HandleSuccess(c, OV)
 }

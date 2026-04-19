@@ -75,3 +75,11 @@ func SetCancelStatusByID(orderID int64) (rowsAffected int64, err error) {
 	}
 	return res.RowsAffected, nil
 }
+
+func GetShipOrderID() ([]int64, error) {
+	var orderIDs []int64
+	err := DB.Model(&models.Order{}).
+		Where("status = ?", 1).
+		Pluck("order_id", &orderIDs).Error
+	return orderIDs, err
+}

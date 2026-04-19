@@ -1,0 +1,307 @@
+.ship-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.ship-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.ship-header h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--gray-800);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.ship-header h2 i {
+    color: #0891b2;
+}
+
+.ship-stats {
+    display: flex;
+    gap: 1.5rem;
+}
+
+.ship-stat {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: var(--gray-100);
+    border-radius: var(--radius-sm);
+}
+
+.ship-stat-value {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: #0891b2;
+}
+
+.ship-stat-label {
+    color: var(--gray-600);
+    font-size: 0.9rem;
+}
+
+/* ===== 订单表格 ===== */
+.ship-table-wrapper {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+}
+
+.ship-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.ship-table thead {
+    background: var(--gray-100);
+}
+
+.ship-table th {
+    padding: 1rem;
+    text-align: left;
+    font-weight: 600;
+    color: var(--gray-700);
+    font-size: 0.9rem;
+    border-bottom: 1px solid var(--gray-200);
+}
+
+.ship-table td {
+    padding: 1rem;
+    border-bottom: 1px solid var(--gray-200);
+    vertical-align: middle;
+}
+
+.ship-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.ship-table tbody tr:hover {
+    background: rgba(79, 70, 229, 0.03);
+}
+
+/* 订单ID */
+.order-id {
+    font-family: 'Monaco', 'Menlo', monospace;
+    font-size: 0.9rem;
+    color: var(--gray-600);
+}
+
+/* 商品信息 */
+.order-items {
+    max-width: 300px;
+}
+
+.order-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.3rem 0;
+}
+
+.order-item i {
+    color: var(--primary-light);
+    font-size: 1rem;
+}
+
+.order-item-name {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 200px;
+}
+
+.order-item-qty {
+    color: var(--gray-600);
+    font-size: 0.85rem;
+    flex-shrink: 0;
+}
+
+/* 订单金额 */
+.order-amount {
+    font-weight: 600;
+    color: var(--primary);
+    font-size: 1rem;
+}
+
+/* 用户信息 */
+.order-user {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.order-user-name {
+    font-weight: 500;
+}
+
+.order-user-id {
+    font-size: 0.8rem;
+    color: var(--gray-600);
+}
+
+/* 下单时间 */
+.order-time {
+    color: var(--gray-600);
+    font-size: 0.9rem;
+}
+
+/* 操作按钮 */
+.ship-action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.6rem 1.2rem;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: linear-gradient(135deg, #0891b2 0%, #06b6d4 100%);
+    color: white;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.ship-action-btn:hover {
+    background: linear-gradient(135deg, #0e7490 0%, #0891b2 100%);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow);
+}
+
+.ship-action-btn:active {
+    transform: translateY(0);
+}
+
+.ship-action-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.ship-action-btn i {
+    font-size: 1rem;
+}
+
+/* 加载状态 */
+.ship-loading {
+    text-align: center;
+    padding: 3rem;
+    color: var(--gray-600);
+}
+
+.ship-loading i {
+    font-size: 2rem;
+    color: var(--primary);
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* 空状态 */
+.ship-empty {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: var(--gray-600);
+}
+
+.ship-empty i {
+    font-size: 3.5rem;
+    color: var(--gray-300);
+    margin-bottom: 1rem;
+}
+
+.ship-empty p {
+    font-size: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+/* 响应式 */
+@media (max-width: 900px) {
+    .ship-table th:nth-child(4),
+    .ship-table td:nth-child(4) {
+        display: none;
+    }
+}
+
+@media (max-width: 768px) {
+    .ship-container {
+        padding: 1rem;
+    }
+
+    .ship-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .ship-stats {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .ship-table-wrapper {
+        overflow-x: auto;
+    }
+
+    .ship-table {
+        min-width: 700px;
+    }
+
+    .ship-table th:nth-child(4),
+    .ship-table td:nth-child(4) {
+        display: table-cell;
+    }
+}
+
+/* Toast 样式复用 */
+.ship-toast {
+    position: fixed;
+    top: 20%;
+    left: 50%;
+    transform: translateX(-50%) translateY(-20px);
+    background: rgba(16, 185, 129, 0.95);
+    color: white;
+    padding: 1rem 2rem;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-md);
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    font-size: 1rem;
+    font-weight: 500;
+    z-index: 1001;
+    animation: toastIn 0.3s ease-out;
+}
+
+@keyframes toastIn {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(-20px);
+    }
+}
+
+.ship-toast.error {
+    background: rgba(239, 68, 68, 0.95);
+}
+
+.ship-toast i {
+    font-size: 1.3rem;
+}

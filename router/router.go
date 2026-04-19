@@ -71,12 +71,12 @@ func SetUp() *gin.Engine {
 			Admin.GET("/AddBookPage", controllers.AddBookPageHandle)
 			Admin.GET("/DeleteBookPage", controllers.DeleteBookPageHandle)
 			Admin.GET("/UpdateBookPage", controllers.UpdateBookPageHandle)
+			Admin.GET("/OrderShipmentPage", controllers.OrderShipmentPageHandle)
 		}
 	}
 	v3 := r.Group("/admin")
 	v3.Use(middlewares.JWTAuthMiddleware(), middlewares.AdminOnlyMiddleware())
 	{
-		//v3.GET("/status", controllers.AdminStatusHandle) //运营统计
 		book := v3.Group("/book")
 		{
 			book.POST("/add", controllers.AdminAddBookHandle)
@@ -90,11 +90,10 @@ func SetUp() *gin.Engine {
 		//	user.GET("/list", controllers.AdminListUserHandle)
 		//	user.GET("/manage", controllers.AdminManageUserHandle)
 		//}
-		//order := v3.Group("/order")
-		//{
-		//	order.GET("/list", controllers.AdminListOrderHandle)
-		//	order.GET("/manage", controllers.AdminManageOrderHandle)
-		//}
+		order := v3.Group("/order")
+		{
+			order.GET("/list", controllers.GetShipOrderHandle)
+		}
 	}
 	zap.L().Info("SetUp Server ...")
 	return r

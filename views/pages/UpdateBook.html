@@ -28,7 +28,7 @@
 
 <div class="container">
     <h2><i class="ri-edit-line"></i> 更新书籍</h2>
-    <p>通过 ID 直接查询，或在搜索框中输入书名/作者模糊查找</p>
+    <p>通过 ID 直接查询，或在搜索框中输入书名模糊查找</p>
     <div style="display:flex; gap:30px; margin-top:20px; flex-wrap:wrap;">
 
         <!-- 左侧查询面板 -->
@@ -48,7 +48,7 @@
             <div id="panelById">
                 <div class="search-input-row">
                     <input id="bookID" type="number" placeholder="请输入书籍 ID"
-                           onkeydown="if(event.key==='Enter') searchBookById()">
+                           onkeydown="if(Event.key==='Enter') searchBookById()">
                     <button onclick="searchBookById()">
                         <i class="ri-search-line"></i> 查询
                     </button>
@@ -63,7 +63,7 @@
                            maxlength="80"
                            autocomplete="off"
                            oninput="onKeywordInput()"
-                           onkeydown="if(event.key==='Enter') doFuzzySearch()">
+                           onkeydown="if(Event.key==='Enter') doFuzzySearch()">
                     <button onclick="doFuzzySearch()">
                         <i class="ri-search-line"></i> 搜索
                     </button>
@@ -140,7 +140,7 @@
 
         try {
             const res = await apiFetch(
-                `/api/searchBooks?keyword=${encodeURIComponent(kw)}`,
+                `/api/getBookTitle/${encodeURIComponent(kw)}`,
                 { method: 'GET' }
             );
             const result = await res.json();

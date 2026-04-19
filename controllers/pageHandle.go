@@ -57,3 +57,7 @@ func BookDetailPageHandle(c *gin.Context) {
 func OrderDetailPageHandle(c *gin.Context) {
 	c.HTML(http.StatusOK, "OrderDetail.html", nil)
 }
+
+func OrderShipmentPageHandle(c *gin.Context) {
+	c.HTML(http.StatusOK, "OrderShipment.html", nil)
+}

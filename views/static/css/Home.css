@@ -1,4 +1,6 @@
+/* ===== 搜索栏 ===== */
 .search-bar-wrapper {
+    position: relative;
     margin-bottom: 1.5rem;
 }
 .search-bar {
@@ -54,7 +56,177 @@
 .btn-clear-search.visible {
     display: flex;
 }
-/* 搜索结果提示 */
+
+/* ===== 搜索结果下拉列表 ===== */
+.search-dropdown {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    left: 0;
+    right: 0;
+    background: white;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-md);
+    border: 1px solid var(--gray-200);
+    z-index: 200;
+    overflow: hidden;
+    display: none;
+}
+.search-dropdown.active {
+    display: block;
+    animation: dropdownFadeIn 0.15s ease-out;
+}
+@keyframes dropdownFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-6px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 下拉列表头部 */
+.search-dropdown-header {
+    padding: 0.5rem 1rem;
+    font-size: 0.78rem;
+    color: var(--gray-600);
+    background: var(--gray-50);
+    border-bottom: 1px solid var(--gray-100);
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+/* 结果列表 */
+.search-dropdown-list {
+    max-height: 360px;
+    overflow-y: auto;
+}
+.search-dropdown-list::-webkit-scrollbar {
+    width: 4px;
+}
+.search-dropdown-list::-webkit-scrollbar-thumb {
+    background: var(--primary-light);
+    border-radius: 4px;
+}
+
+/* 单条结果 */
+.dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    border-bottom: 1px solid var(--gray-100);
+    transition: background 0.12s;
+    text-decoration: none;
+    color: inherit;
+}
+.dropdown-item:last-child {
+    border-bottom: none;
+}
+.dropdown-item:hover {
+    background: var(--gray-50);
+}
+.dropdown-item:active {
+    background: rgba(79, 70, 229, 0.06);
+}
+
+/* 书籍图标占位 */
+.dropdown-book-icon {
+    width: 40px;
+    height: 52px;
+    background: linear-gradient(135deg, var(--gray-100) 0%, var(--gray-50) 100%);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: var(--gray-400);
+    font-size: 1.2rem;
+}
+.dropdown-item-info {
+    flex: 1;
+    min-width: 0;
+}
+.dropdown-item-title {
+    font-weight: 600;
+    font-size: 0.92rem;
+    color: var(--gray-800);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.dropdown-item-meta {
+    font-size: 0.78rem;
+    color: var(--gray-600);
+    margin-top: 0.15rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.dropdown-item-price {
+    font-weight: 700;
+    color: var(--primary);
+    font-size: 0.9rem;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+.dropdown-item-score {
+    display: flex;
+    align-items: center;
+    gap: 0.2rem;
+    font-size: 0.78rem;
+    color: #f59e0b;
+    flex-shrink: 0;
+    font-weight: 600;
+}
+
+/* 空状态 */
+.dropdown-empty {
+    text-align: center;
+    padding: 1.5rem 1rem;
+    color: var(--gray-600);
+    font-size: 0.88rem;
+}
+.dropdown-empty i {
+    font-size: 2rem;
+    display: block;
+    margin-bottom: 0.5rem;
+    opacity: 0.4;
+}
+
+/* 加载状态 */
+.dropdown-loading {
+    text-align: center;
+    padding: 1.5rem 1rem;
+    color: var(--gray-600);
+    font-size: 0.88rem;
+}
+
+/* 底部"查看全部" */
+.dropdown-footer {
+    padding: 0.6rem 1rem;
+    text-align: center;
+    border-top: 1px solid var(--gray-100);
+    background: var(--gray-50);
+}
+.dropdown-footer a {
+    font-size: 0.82rem;
+    color: var(--primary);
+    font-weight: 500;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.3rem;
+}
+.dropdown-footer a:hover {
+    color: var(--primary-dark);
+}
+
+/* 搜索提示（保留兼容） */
 .search-result-tip {
     font-size: 0.88rem;
     color: var(--gray-600);
@@ -67,6 +239,18 @@
     color: var(--primary);
     font-weight: 600;
 }
+.search-result-tip {
+    display: none;
+}
+
+/* 搜索加载态 */
+.search-loading {
+    text-align: center;
+    padding: 2rem;
+    color: var(--gray-600);
+    font-size: 0.95rem;
+}
+
 /* 无结果 */
 .no-result {
     text-align: center;
@@ -78,10 +262,18 @@
     opacity: 0.4;
     margin-bottom: 0.75rem;
 }
-/* 搜索加载态 */
-.search-loading {
-    text-align: center;
-    padding: 2rem;
-    color: var(--gray-600);
-    font-size: 0.95rem;
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+    .search-dropdown {
+        position: fixed;
+        top: auto;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        top: auto;
+        border-radius: var(--radius) var(--radius) 0 0;
+        max-height: 60vh;
+        transform: none !important;
+    }
 }

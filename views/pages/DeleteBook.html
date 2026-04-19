@@ -135,7 +135,7 @@
 
         try {
             const res = await apiFetch(
-                `/api/searchBooks?keyword=${encodeURIComponent(kw)}`,
+                `/api/getBookTitle/${encodeURIComponent(kw)}`,
                 { method: 'GET' }
             );
             const result = await res.json();

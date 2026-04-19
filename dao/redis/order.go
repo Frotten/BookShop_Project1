@@ -215,3 +215,13 @@ func DeleteOrder(orderID int64) error {
 	key := "order:" + strconv.FormatInt(orderID, 10)
 	return RDB.Del(ctx, key).Err()
 }
+
+func CacheOrderID(orderID int64) error {
+	key := "order:ship"
+	return RDB.SAdd(ctx, key, orderID).Err()
+}
+
+func GetShipOrderID() ([]string, error) {
+	key := "order:ship"
+	return RDB.SMembers(ctx, key).Result()
+}

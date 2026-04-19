@@ -73,15 +73,15 @@
 
     /**
      * 将后端 int8 状态码映射为可读文字、样式类和图标
-     * 0=待付款, 1=已付款, 2=已发货, 3=已完成, -1=已取消
+     * -1=已删除, 0=未支付, 1=已支付待发货, 2=已发货待收货, 3=已收货
      */
     function getOrderStatus(status) {
         switch (Number(status)) {
-            case 0:  return { text: '待付款', cls: 'pending',   icon: 'ri-time-line',            desc: '等待买家付款' };
-            case 1:  return { text: '已付款', cls: 'paid',      icon: 'ri-bank-card-line',        desc: '付款成功，等待发货' };
-            case 2:  return { text: '已发货', cls: 'shipped',   icon: 'ri-truck-line',            desc: '商品已发出，请耐心等待' };
-            case 3:  return { text: '已完成', cls: 'completed', icon: 'ri-checkbox-circle-line',  desc: '订单已完成，感谢购买' };
-            case -1: return { text: '已取消', cls: 'cancelled', icon: 'ri-close-circle-line',     desc: '订单已取消' };
+            case 0:  return { text: '未支付', cls: 'pending',   icon: 'ri-time-line',            desc: '订单已提交，等待支付' };
+            case 1:  return { text: '已支付待发货', cls: 'paid',      icon: 'ri-bank-card-line',        desc: '支付成功，商家正在准备发货' };
+            case 2:  return { text: '已发货待收货', cls: 'shipped',   icon: 'ri-truck-line',            desc: '商品已发出，请耐心等待收货' };
+            case 3:  return { text: '已收货', cls: 'completed', icon: 'ri-checkbox-circle-line',  desc: '订单已完成，感谢购买' };
+            case -1: return { text: '已删除', cls: 'cancelled', icon: 'ri-close-circle-line',     desc: '订单已删除' };
             default: return { text: '未知状态', cls: '',        icon: 'ri-question-line',         desc: '' };
         }
     }
@@ -90,7 +90,6 @@
     function goBackToOrders(e) {
         if (e) e.preventDefault();
         window.location.href = '/page/ProfilePage';
-        // 延迟后切换到订单Tab（兼容 SPA 场景；MPA 场景可以通过 URL hash 处理）
         setTimeout(() => {
             if (typeof switchTab === 'function') switchTab('orders');
         }, 300);
