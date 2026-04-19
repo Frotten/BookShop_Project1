@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>订单发货 - 网络书城</title>
+    <link rel="stylesheet" href="/static/css/CommonStyle.css">
+    <link rel="stylesheet" href="/static/css/AdminHome.css">
+    <link rel="stylesheet" href="/static/css/OrderShipment.css">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css" rel="stylesheet"/>
+</head>
+<body>
+
+<header class="navbar">
+    <h1>
+        <a href="/page/AdminHomePage" style="color: inherit; text-decoration: none;">
+            <i class="ri-book-open-line"></i> 网络书城
+        </a>
+    </h1>
+    <div class="nav-right">
+        <a href="/page/AdminHomePage" style="display:flex; align-items:center; gap:0.5rem; color:var(--gray-600); text-decoration:none; padding: 0.5rem 1rem; border-radius: var(--radius-sm); transition: all 0.2s;">
+            <i class="ri-arrow-left-line"></i> 返回管理首页
+        </a>
+        <div id="auth-area" style="display:none; align-items:center; gap:10px;">
+            <span><i class="ri-admin-line"></i> 管理员</span>
+            <button onclick="logout()"><i class="ri-logout-box-line"></i> 退出登录</button>
+        </div>
+    </div>
+</header>
+
+<div class="ship-container">
+    <!-- 页面标题和统计 -->
+    <div class="ship-header">
+        <h2><i class="ri-truck-line"></i> 订单发货管理</h2>
+        <div class="ship-stats">
+            <div class="ship-stat">
+                <span class="ship-stat-value" id="pendingCount">0</span>
+                <span class="ship-stat-label">待发货订单</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 订单列表 -->
+    <div class="ship-table-wrapper">
+        <table class="ship-table">
+            <thead>
+                <tr>
+                    <th>订单编号</th>
+                    <th>商品信息</th>
+                    <th>订单金额</th>
+                    <th>用户ID</th>
+                    <th>下单时间</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody id="orderTableBody">
+                <!-- 动态填充 -->
+            </tbody>
+        </table>
+
+        <!-- 加载状态 -->
+        <div class="ship-loading" id="loadingState">
+            <i class="ri-loader-4-line"></i>
+            <p style="margin-top:1rem;">正在加载订单数据...</p>
+        </div>
+
+        <!-- 空状态 -->
+        <div class="ship-empty" id="emptyState" style="display:none;">
+            <i class="ri-inbox-2-line"></i>
+            <p>暂无待发货订单，辛苦了！</p>
+            <button onclick="loadOrders()">
+                <i class="ri-refresh-line"></i> 刷新列表
+            </button>
+        </div>
+    </div>
+</div>
+
+<script src="/static/js/CommonScript.js"></script>
+<script>
+    // ===== 工具函数 =====
+    function escapeHtml(str) {
+        if (str === null || str === undefined) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function formatDate(dateStr) {
+        if (!dateStr) return '未知时间';
+        try {
+            const date = new Date(dateStr);
+            return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')} ${String(date.getHours()).padStart(2,'0')}:${String(date.getMinutes()).padStart(2,'0')}`;
+        } catch(e) {
+            return dateStr;
+        }
+    }
+
+    function showToast(message, isError = false) {
+        const existing = document.querySelector('.ship-toast');
+        if (existing) existing.remove();
+
+        const toast = document.createElement('div');
+        toast.className = 'ship-toast' + (isError ? ' error' : '');
+        toast.innerHTML = `
+            <i class="${isError ? 'ri-error-warning-fill' : 'ri-checkbox-circle-fill'}"></i>
+            <span>${escapeHtml(message)}</span>
+        `;
+        document.body.appendChild(toast);
+
+        setTimeout(() => {
+            toast.style.animation = 'toastIn 0.3s ease-out reverse';
+            setTimeout(() => toast.remove(), 300);
+        }, 2000);
+    }
+
+    // ===== 加载订单列表 =====
+    async function loadOrders() {
+        const tableBody = document.getElementById('orderTableBody');
+        const loadingState = document.getElementById('loadingState');
+        const emptyState = document.getElementById('emptyState');
+        const pendingCount = document.getElementById('pendingCount');
+
+        loadingState.style.display = 'block';
+        emptyState.style.display = 'none';
+        tableBody.innerHTML = '';
+
+        try {
+            const res = await apiFetch('/admin/order/list', { method: 'GET' });
+            const result = await res.json();
+
+            loadingState.style.display = 'none';
+
+            if (result.code === CODE_SUCCESS && result.data) {
+                // /admin/order/list 已经返回 status=1 的订单，不需要再过滤
+                const orders = result.data || [];
+                pendingCount.textContent = orders.length;
+
+                if (orders.length === 0) {
+                    emptyState.style.display = 'block';
+                    return;
+                }
+
+                // 渲染订单列表
+                renderOrders(orders);
+            } else if (result.code === CODE_NEED_LOGIN || result.code === CODE_INVALID_TOKEN) {
+                showToast('请先登录管理员账号', true);
+                setTimeout(() => window.location.href = '/page/AdminLogin', 1500);
+            } else {
+                showToast(result.msg || '加载订单失败', true);
+            }
+        } catch (e) {
+            loadingState.style.display = 'none';
+            console.error('加载订单失败:', e);
+            showToast('加载订单失败，请稍后重试', true);
+        }
+    }
+
+    // ===== 渲染订单列表 =====
+    function renderOrders(orders) {
+        const tableBody = document.getElementById('orderTableBody');
+
+        orders.forEach(order => {
+            const amountYuan = (order.total_price / 100).toFixed(2);
+            const items = order.items || order.Items || [];
+            const itemCount = items.reduce((sum, item) => sum + (item.quantity || 0), 0);
+
+            // 渲染商品列表
+            let itemsHtml = '';
+            if (items.length === 0) {
+                itemsHtml = '<div class="order-item"><i class="ri-file-question-line"></i><span class="order-item-name">暂无商品</span></div>';
+            } else {
+                items.forEach((item, idx) => {
+                    if (idx < 2) { // 最多显示2个商品
+                        const title = item.title || ('书籍 #' + item.book_id);
+                        itemsHtml += `
+                            <div class="order-item">
+                                <i class="ri-book-2-line"></i>
+                                <span class="order-item-name">${escapeHtml(title)}</span>
+                                <span class="order-item-qty">× ${item.quantity}</span>
+                            </div>
+                        `;
+                    }
+                });
+                if (items.length > 2) {
+                    itemsHtml += `<div class="order-item" style="color: var(--gray-500); font-size: 0.85rem;">...还有 ${items.length - 2} 件商品</div>`;
+                }
+            }
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>
+                    <span class="order-id">#${order.order_id}</span>
+                </td>
+                <td>
+                    <div class="order-items">
+                        ${itemsHtml}
+                        <div style="margin-top: 0.25rem; font-size: 0.85rem; color: var(--gray-500);">共 ${itemCount} 件商品</div>
+                    </div>
+                </td>
+                <td>
+                    <span class="order-amount">￥${amountYuan}</span>
+                </td>
+                <td>
+                    <div class="order-user">
+                        <span class="order-user-name">用户 #${order.user_id}</span>
+                    </div>
+                </td>
+                <td>
+                    <span class="order-time">${formatDate(order.created_at)}</span>
+                </td>
+                <td>
+                    <button class="ship-action-btn" onclick="shipOrder(${order.order_id}, this)">
+                        <i class="ri-truck-line"></i>
+                        <span>立即发货</span>
+                    </button>
+                </td>
+            `;
+            tableBody.appendChild(tr);
+        });
+    }
+
+    // ===== 发货操作 =====
+    async function shipOrder(orderId, btn) {
+        if (!confirm(`确认发货订单 #${orderId}？`)) return;
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="ri-loader-4-line" style="animation: spin 1s linear infinite;"></i> 处理中...';
+
+        try {
+            // 发货 API - 需要后端提供
+            const res = await apiFetch('/api/orderShip', {
+                method: 'POST',
+                body: JSON.stringify({ order_id: orderId })
+            });
+            const result = await res.json();
+
+            if (result.code === CODE_SUCCESS) {
+                showToast(`订单 #${orderId} 发货成功！`);
+                // 从列表中移除该行
+                const row = btn.closest('tr');
+                row.style.transition = 'opacity 0.3s';
+                row.style.opacity = '0.5';
+
+                // 更新待发货数量
+                const pendingCount = document.getElementById('pendingCount');
+                const newCount = parseInt(pendingCount.textContent) - 1;
+                pendingCount.textContent = newCount;
+
+                // 延迟移除行
+                setTimeout(() => {
+                    row.remove();
+                    // 检查是否为空
+                    const tableBody = document.getElementById('orderTableBody');
+                    if (tableBody.children.length === 0) {
+                        document.getElementById('emptyState').style.display = 'block';
+                    }
+                }, 500);
+            } else {
+                showToast(result.msg || '发货失败', true);
+                btn.disabled = false;
+                btn.innerHTML = '<i class="ri-truck-line"></i><span>立即发货</span>';
+            }
+        } catch (e) {
+            console.error('发货失败:', e);
+            showToast('发货失败，请稍后重试', true);
+            btn.disabled = false;
+            btn.innerHTML = '<i class="ri-truck-line"></i><span>立即发货</span>';
+        }
+    }
+
+    // ===== 页面初始化 =====
+    document.addEventListener('DOMContentLoaded', async function () {
+        const isLogged = await checkAuth();
+        const authArea = document.getElementById('auth-area');
+
+        if (!isLogged) {
+            showToast('请先登录管理员账号', true);
+            setTimeout(() => window.location.href = '/page/AdminLogin', 1500);
+            return;
+        }
+
+        authArea.style.display = 'flex';
+        await loadOrders();
+    });
+</script>
+</body>
+</html>
