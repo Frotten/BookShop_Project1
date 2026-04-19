@@ -6,9 +6,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"math/rand"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -237,17 +237,25 @@ func SetBookSummary(List *models.ListBook) error {
 }
 
 func GetBookIDsByTitle(keyword string) ([]int64, error) {
-	res, err := RDB.Do(ctx, "FT.SEARCH", "idx:book", keyword+"*", "NOCONTENT").Result()
-	log.Printf("res type: %T, value: %+v", res, res)
+	res, err := RDB.Do(ctx,
+		"FT.SEARCH", "idx:book", keyword+"*", "NOCONTENT",
+	).Result()
 	if err != nil {
 		return nil, err
 	}
-	data := res.(map[interface{}]interface{})
-	var ids []int64
-	for K, V := range data {
-		id, _ := strconv.ParseInt(V.(string), 10, 64)
+	data := res.([]interface{})
+	if len(data) < 2 {
+		return []int64{}, nil
+	}
+	ids := make([]int64, 0, len(data)-1)
+	for i := 1; i < len(data); i++ {
+		key := data[i].(string)
+		trimmed := strings.TrimPrefix(key, "book:")
+		id, err := strconv.ParseInt(trimmed, 10, 64)
+		if err != nil {
+			continue
+		}
 		ids = append(ids, id)
-		fmt.Println("K:", K, "V:", V)
 	}
 	return ids, nil
 }

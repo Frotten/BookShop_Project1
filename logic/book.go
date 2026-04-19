@@ -4,7 +4,6 @@ import (
 	"Project1_Shop/dao/mysql"
 	"Project1_Shop/dao/redis"
 	"Project1_Shop/models"
-	"fmt"
 	"strconv"
 )
 
@@ -127,10 +126,8 @@ func BookListToCache(book *models.Book) *models.ListBook {
 func GetBooksByTitle(Title string) ([]*models.BookCache, error) {
 	z, err, _ := redis.G.Do(Title, func() (interface{}, error) {
 		ids, err := redis.GetBookIDsByTitle(Title)
-		fmt.Println("IDs:", ids)
 		if err != nil || len(ids) <= 0 {
 			Books, err := mysql.GetBooksByTitle(Title)
-			fmt.Println("DBBooks:", Books)
 			var BookCache []*models.BookCache
 			for _, Book := range Books {
 				BookCache = append(BookCache, BookToCache(Book))
@@ -146,14 +143,11 @@ func GetBooksByTitle(Title string) ([]*models.BookCache, error) {
 			return BookCache, nil
 		}
 		Books, err := GetBooksByIDs(ids)
-		fmt.Println("Books:", Books)
 		if err != nil {
 			return nil, err
 		}
 		return Books, nil
 	})
-	fmt.Println("Error:", err)
-	fmt.Println("Books:", z.([]*models.BookCache))
 	if err != nil {
 		return nil, err
 	}
