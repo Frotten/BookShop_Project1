@@ -3,12 +3,17 @@ package mq
 import (
 	"Project1_Shop/dao/mysql"
 	"Project1_Shop/dao/redis"
+	"Project1_Shop/models"
 
 	"go.uber.org/zap"
 )
 
 func StartOrderExpiredConsumer() error {
 	return StartConsumer(OrderExpiredQueue, handleOrderExpired)
+}
+
+func StartOrderPaymentConsumer() error {
+	return StartConsumer(OrderPaymentQueue, handleOrderPayment)
 }
 
 func handleOrderExpired(orderID int64) bool {
@@ -60,5 +65,37 @@ func handleOrderExpired(orderID int64) bool {
 		_ = redis.DeleteOrderItem(item.ID)
 	}
 	zap.L().Info("order expired and cancelled successfully", zap.Int64("order_id", orderID))
+	return true
+}
+
+func handleOrderPayment(orderID int64) bool {
+	zap.L().Info("order payment received, start processing", zap.Int64("order_id", orderID))
+	var items []*models.OrderItem
+	var err error
+	items, err = redis.GetItemsByOrderID(orderID)
+	if err != nil || len(items) == 0 {
+		items, err = mysql.GetOrderItemsByOrderID(orderID)
+		if err != nil {
+			zap.L().Error("GetOrderItemsByOrderID failed", zap.Int64("order_id", orderID), zap.Error(err))
+			return false
+		}
+	}
+	for _, item := range items {
+		err := mysql.SetBookSale(item.BookID, item.Quantity)
+		if err != nil {
+			zap.L().Error("SetBookSale failed", zap.Error(err))
+			return false
+		}
+		err = redis.SetBookSale(item.BookID, item.Quantity)
+		if err != nil {
+			_ = redis.DeleteBookCache(item.BookID)
+			zap.L().Warn("SetBookSale failed, cache deleted", zap.Int64("book_id", item.BookID), zap.Error(err))
+		}
+		err = redis.AddSaleRank(item.BookID, item.Quantity)
+		if err != nil {
+			zap.L().Warn("AddSaleRank failed", zap.Int64("book_id", item.BookID), zap.Error(err))
+		}
+	}
+	zap.L().Info("order payment and cancelled successfully", zap.Int64("order_id", orderID))
 	return true
 }

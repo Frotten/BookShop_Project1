@@ -157,6 +157,16 @@ func TopScoreHandle(c *gin.Context) {
 	HandleSuccess(c, ListBook)
 }
 
+func TopSaleHandle(c *gin.Context) {
+	Books, res := logic.GetTopSaleList()
+	if res != models.CodeSuccess {
+		zap.L().Error("GetTopSaleList failed")
+		HandleResponse(c, res)
+		return
+	}
+	HandleSuccess(c, Books)
+}
+
 func CommentHandle(c *gin.Context) {
 	var CP models.CommentParam
 	if err := c.ShouldBindJSON(&CP); err != nil {

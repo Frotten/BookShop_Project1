@@ -11,18 +11,6 @@ import (
 	"go.uber.org/zap"
 )
 
-func GetBookPriceByIDs(BookIDs []int64) (map[int64]int64, error) {
-	bookPriceMap := make(map[int64]int64)
-	Books, err := GetBooksByIDs(BookIDs)
-	if err != nil {
-		return nil, err
-	}
-	for _, book := range Books {
-		bookPriceMap[book.BookID] = book.Price
-	}
-	return bookPriceMap, nil
-}
-
 func CreateOrder(orderParam models.OrderRequest, UserID int64) models.ResCode {
 	var OrderItems []*models.OrderItem
 	var BookIDs []int64
@@ -208,8 +196,8 @@ func GetOrderDetailSecure(orderID int64) (*models.OrderView, models.ResCode) {
 	return ov, models.CodeSuccess
 }
 
-func OrderPay(userID, orderID int64) models.ResCode {
-	rows, err := mysql.PayOrderAtomic(orderID, userID)
+func OrderPay(orderID int64) models.ResCode { //添加统计，sale表中增加销量，以上操作可以异步完成
+	rows, err := mysql.SetOrderStatus(orderID, 0, 1)
 	if err != nil {
 		return models.CodeMySQLError
 	}
@@ -220,9 +208,14 @@ func OrderPay(userID, orderID int64) models.ResCode {
 		if err = redis.CacheOrderID(orderID); err != nil {
 			return models.CodeRedisError
 		}
+		err = mq.PublishOrderPayment(orderID)
+		if err != nil {
+			zap.L().Error("PublishOrderPayment failed", zap.Error(err))
+			return models.CodeServerBusy
+		}
 		return models.CodeSuccess
 	}
-	o, err := mysql.GetOrderByIDAndUser(orderID, userID)
+	o, err := mysql.GetOrderByIDAndUser(orderID)
 	if err != nil {
 		return models.CodeOrderNotExist
 	}
@@ -233,6 +226,22 @@ func OrderPay(userID, orderID int64) models.ResCode {
 }
 
 func OrderCancel(orderID int64) models.ResCode {
+	Order, res := GetOrderDetailSecure(orderID)
+	if res != models.CodeSuccess {
+		return res
+	}
+	if Order.Status == 1 {
+		_ = redis.DeleteOrderIDFromShipCache(orderID)
+	}
+	if Order.Status >= 1 {
+		for _, item := range Order.Items {
+			err := mysql.ReduceSale(item.BookID, item.Quantity)
+			if err != nil {
+				return models.CodeMySQLError
+			}
+			_ = redis.ReduceSale(item.BookID, item.Quantity)
+		}
+	}
 	rows, err := mysql.SetCancelStatusByID(orderID)
 	if rows <= 0 {
 		return models.CodeOrderNotExist
@@ -262,7 +271,7 @@ func OrderCancel(orderID int64) models.ResCode {
 func GetShipOrder() ([]*models.OrderView, models.ResCode) {
 	IDs, err := redis.GetShipOrderID()
 	if err != nil || len(IDs) == 0 {
-		IDs, err := mysql.GetShipOrderID()
+		IDs, err := mysql.GetShipOrderIDByStatus(1)
 		if err != nil {
 			return nil, models.CodeServerBusy
 		}
@@ -286,4 +295,49 @@ func GetShipOrder() ([]*models.OrderView, models.ResCode) {
 		OV = append(OV, View)
 	}
 	return OV, models.CodeSuccess
+}
+
+func OrderShip(orderID int64) models.ResCode { //如果有具体发货操作的话应该在这补充，但目前只有一个状态变更，所以就直接改状态了
+	rows, err := mysql.SetOrderStatus(orderID, 1, 2)
+	if err != nil {
+		return models.CodeMySQLError
+	}
+	if rows > 0 {
+		if err := redis.UpdateOrderStatusInCache(orderID, 2); err != nil {
+			return models.CodeRedisError
+		}
+		if err = redis.DeleteOrderIDFromShipCache(orderID); err != nil {
+			return models.CodeRedisError
+		}
+		return models.CodeSuccess
+	}
+	o, err := mysql.GetOrderByIDAndUser(orderID)
+	if err != nil {
+		return models.CodeOrderNotExist
+	}
+	if o.Status != 1 {
+		return models.CodeOrderAlreadyConfirmed
+	}
+	return models.CodeOrderNotExist
+}
+
+func OrderConfirm(orderID int64) models.ResCode {
+	rows, err := mysql.SetOrderStatus(orderID, 2, 3)
+	if err != nil {
+		return models.CodeMySQLError
+	}
+	if rows > 0 {
+		if err := redis.UpdateOrderStatusInCache(orderID, 3); err != nil {
+			return models.CodeRedisError
+		}
+		return models.CodeSuccess
+	}
+	o, err := mysql.GetOrderByIDAndUser(orderID)
+	if err != nil {
+		return models.CodeOrderNotExist
+	}
+	if o.Status != 2 {
+		return models.CodeOrderAlreadyConfirmed
+	}
+	return models.CodeOrderNotExist
 }

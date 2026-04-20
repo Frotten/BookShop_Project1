@@ -231,7 +231,7 @@
 
         try {
             // 发货 API - 需要后端提供
-            const res = await apiFetch('/api/orderShip', {
+            const res = await apiFetch('/admin/order/orderShip', {
                 method: 'POST',
                 body: JSON.stringify({ order_id: orderId })
             });

@@ -56,9 +56,13 @@ func main() {
 		return
 	}
 	defer mq.Close()
-	// 启动订单超时取消消费者（监听 order.expired 死信队列）
+	// 启动消费者
 	if err := mq.StartOrderExpiredConsumer(); err != nil {
 		fmt.Printf("start order expired consumer failed, err:%v\n", err)
+		return
+	}
+	if err := mq.StartOrderPaymentConsumer(); err != nil {
+		fmt.Printf("start order payment consumer failed, err:%v\n", err)
 		return
 	}
 	// 初始化雪花算法

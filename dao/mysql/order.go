@@ -32,9 +32,9 @@ func GetUserOrdersInfo(UserID int64) ([]*models.Order, error) {
 	return Ans, err
 }
 
-func GetOrderByIDAndUser(orderID, userID int64) (*models.Order, error) {
+func GetOrderByIDAndUser(orderID int64) (*models.Order, error) {
 	var o models.Order
-	err := DB.Where("order_id = ? AND user_id = ?", orderID, userID).First(&o).Error
+	err := DB.Where("order_id = ?", orderID).First(&o).Error
 	if err != nil {
 		return nil, err
 	}
@@ -56,10 +56,10 @@ func GetOrderItemsByOrderID(orderID int64) ([]*models.OrderItem, error) {
 	return items, err
 }
 
-func PayOrderAtomic(orderID, userID int64) (rowsAffected int64, err error) {
+func SetOrderStatus(orderID, raw, status int64) (rowsAffected int64, err error) {
 	res := DB.Model(&models.Order{}).
-		Where("order_id = ? AND user_id = ? AND status = ?", orderID, userID, 0).
-		Update("status", 1)
+		Where("order_id = ? AND status = ?", orderID, raw).
+		Update("status", status)
 	if res.Error != nil {
 		return 0, res.Error
 	}
@@ -68,7 +68,7 @@ func PayOrderAtomic(orderID, userID int64) (rowsAffected int64, err error) {
 
 func SetCancelStatusByID(orderID int64) (rowsAffected int64, err error) {
 	res := DB.Model(&models.Order{}).
-		Where("order_id = ? AND status = ?", orderID, 0).
+		Where("order_id = ?", orderID).
 		Update("status", -1)
 	if res.Error != nil {
 		return 0, res.Error
@@ -76,10 +76,10 @@ func SetCancelStatusByID(orderID int64) (rowsAffected int64, err error) {
 	return res.RowsAffected, nil
 }
 
-func GetShipOrderID() ([]int64, error) {
+func GetShipOrderIDByStatus(status int64) ([]int64, error) {
 	var orderIDs []int64
 	err := DB.Model(&models.Order{}).
-		Where("status = ?", 1).
+		Where("status = ?", status).
 		Pluck("order_id", &orderIDs).Error
 	return orderIDs, err
 }

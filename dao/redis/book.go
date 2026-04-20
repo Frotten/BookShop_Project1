@@ -118,6 +118,11 @@ func AddScoreRank(BookID int64, Score float64) error {
 	}).Err()
 }
 
+func AddSaleRank(BookID, Quantity int64) error {
+	key := "book:rank:sale"
+	return RDB.ZIncrBy(ctx, key, float64(Quantity), strconv.FormatInt(BookID, 10)).Err()
+}
+
 func SetBookCache(Book *models.BookCache, Score int64) error {
 	key := "book:" + strconv.FormatInt(Book.BookID, 10)
 	tagsJSON, err := json.Marshal(Book.Tags)
@@ -192,6 +197,25 @@ func GetScoreList() ([]redis.Z, error) {
 	return results, nil
 }
 
+func GetSaleList() ([]redis.Z, error) {
+	key := "book:rank:sale"
+	results, err := RDB.ZRevRangeWithScores(ctx, key, 0, 9).Result()
+	if err != nil {
+		return nil, err
+	}
+	return results, nil
+}
+
+func BookCacheToListBook(Book *models.BookCache) *models.ListBook {
+	return &models.ListBook{
+		BookID: Book.BookID,
+		Title:  Book.Title,
+		Sales:  Book.Sales,
+		Score:  Book.Score,
+		Tags:   Book.Tags,
+	}
+}
+
 func GetBookSummaryByBookID(BookID int64, Score int64) (*models.ListBook, error) {
 	ID := strconv.FormatInt(BookID, 10)
 	key := "book:summary:" + ID
@@ -209,6 +233,7 @@ func GetBookSummaryByBookID(BookID int64, Score int64) (*models.ListBook, error)
 			BookID: -1,
 		}, nil
 	}
+	sale, _ := strconv.ParseInt(data["sales"], 10, 64)
 	var tags []string
 	err = json.Unmarshal([]byte(data["tags"]), &tags)
 	return &models.ListBook{
@@ -216,6 +241,7 @@ func GetBookSummaryByBookID(BookID int64, Score int64) (*models.ListBook, error)
 		Title:  data["title"],
 		Tags:   tags,
 		Score:  Score,
+		Sales:  sale,
 	}, err
 }
 
@@ -427,4 +453,14 @@ func SetUserRatings(UserID int64, Ratings []*models.UserRating) error {
 func UpdateBookCacheStock(BookID, Quantity int64) error {
 	key := "book:" + strconv.FormatInt(BookID, 10)
 	return RDB.HIncrBy(ctx, key, "stock", Quantity).Err()
+}
+
+func SetBookSale(BookID, Quantity int64) error {
+	key := "book:" + strconv.FormatInt(BookID, 10)
+	return RDB.HIncrBy(ctx, key, "sales", Quantity).Err()
+}
+
+func ReduceSale(BookID, Quantity int64) error {
+	key := "book:" + strconv.FormatInt(BookID, 10)
+	return RDB.HIncrBy(ctx, key, "sales", -Quantity).Err()
 }

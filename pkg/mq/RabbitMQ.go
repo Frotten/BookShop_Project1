@@ -13,12 +13,13 @@ import (
 
 const (
 	// OrderPendingQueue 订单待支付队列（30分钟 TTL，超时死信 → 取消队列）
-	OrderPendingQueue = "order.pending"
-	// OrderDeadLetterExchange 死信交换机 & 路由键
+	OrderPendingQueue         = "order.pending"
 	OrderDeadLetterExchange   = "order.dlx"
 	OrderDeadLetterRoutingKey = "order.expired"
-	// OrderExpiredQueue 死信消费队列（实际执行取消逻辑）
-	OrderExpiredQueue = "order.expired"
+	OrderExpiredQueue         = "order.expired"
+	OrderPaymentQueue         = "order.payment"
+	OrderPaymentRoutingKey    = "order.payment"
+	OrderPaymentExchange      = "order.payment.exchange"
 )
 
 var (
@@ -76,6 +77,30 @@ func Init(cfg *settings.RabbitMQConfig) error {
 	); err != nil {
 		return fmt.Errorf("declare pending queue failed: %w", err)
 	}
+	if err := ch.ExchangeDeclare(
+		OrderPaymentExchange,
+		"direct",
+		true,
+		false,
+		false,
+		false,
+		nil,
+	); err != nil {
+		return fmt.Errorf("declare payment exchange failed: %w", err)
+	}
+	if _, err := ch.QueueDeclare(
+		OrderPaymentQueue,
+		true,
+		false,
+		false,
+		false,
+		nil,
+	); err != nil {
+		return fmt.Errorf("declare payment queue failed: %w", err)
+	}
+	if err := ch.QueueBind(OrderPaymentQueue, OrderPaymentRoutingKey, OrderPaymentExchange, false, nil); err != nil {
+		return fmt.Errorf("bind payment queue failed: %w", err)
+	}
 
 	globalConn = conn
 	globalCh = ch
@@ -117,6 +142,10 @@ func getChannel() (*amqp.Channel, error) {
 
 func PublishOrderPending(orderID int64) error {
 	return publish(OrderPendingQueue, strconv.FormatInt(orderID, 10))
+}
+
+func PublishOrderPayment(orderID int64) error {
+	return publish(OrderPaymentQueue, strconv.FormatInt(orderID, 10))
 }
 
 func publish(queue, body string) error {

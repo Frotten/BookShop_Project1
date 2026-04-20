@@ -86,13 +86,7 @@ func OrderPayHandle(c *gin.Context) {
 		HandleResponse(c, models.CodeInvalidParam)
 		return
 	}
-	UserID, ok := c.Get("userID")
-	if !ok || UserID == nil {
-		zap.L().Error("OrderPayHandle: UserID not found in context")
-		HandleResponse(c, models.CodeServerBusy)
-		return
-	}
-	res := logic.OrderPay(UserID.(int64), p.OrderID)
+	res := logic.OrderPay(p.OrderID)
 	if res != models.CodeSuccess {
 		zap.L().Error("OrderPay failed")
 		HandleResponse(c, res)
@@ -125,4 +119,36 @@ func GetShipOrderHandle(c *gin.Context) {
 		return
 	}
 	HandleSuccess(c, OV)
+}
+
+func OrderShipHandle(c *gin.Context) {
+	var p models.OrderConfirmParam
+	if err := c.ShouldBindJSON(&p); err != nil {
+		zap.L().Error("OrderShipHandle failed", zap.Error(err))
+		HandleResponse(c, models.CodeInvalidParam)
+		return
+	}
+	res := logic.OrderShip(p.OrderID)
+	if res != models.CodeSuccess {
+		zap.L().Error("OrderShip failed")
+		HandleResponse(c, res)
+		return
+	}
+	HandleSuccess(c, nil)
+}
+
+func OrderConfirmHandle(c *gin.Context) {
+	var p models.OrderConfirmParam
+	if err := c.ShouldBindJSON(&p); err != nil {
+		zap.L().Error("OrderConfirmHandle failed", zap.Error(err))
+		HandleResponse(c, models.CodeInvalidParam)
+		return
+	}
+	res := logic.OrderConfirm(p.OrderID)
+	if res != models.CodeSuccess {
+		zap.L().Error("OrderConfirm failed")
+		HandleResponse(c, res)
+		return
+	}
+	HandleSuccess(c, nil)
 }

@@ -5,6 +5,8 @@ import (
 	"Project1_Shop/dao/redis"
 	"Project1_Shop/models"
 	"strconv"
+
+	"go.uber.org/zap"
 )
 
 func BookToCache(book *models.Book) *models.BookCache {
@@ -258,4 +260,70 @@ func UpdateBook(B *models.UpdateBookParam) models.ResCode {
 	}
 	_ = redis.DeleteBookCache(book.BookID)
 	return models.CodeSuccess
+}
+
+func GetBookPriceByIDs(BookIDs []int64) (map[int64]int64, error) {
+	bookPriceMap := make(map[int64]int64)
+	Books, err := GetBooksByIDs(BookIDs)
+	if err != nil {
+		return nil, err
+	}
+	for _, book := range Books {
+		bookPriceMap[book.BookID] = book.Price
+	}
+	return bookPriceMap, nil
+}
+
+func GetTopSaleList() ([]*models.ListBook, models.ResCode) {
+	results, err := redis.GetSaleList()
+	if err != nil || len(results) <= 0 {
+		Books, _, err := mysql.GetBooksPageBySale(1)
+		if err != nil {
+			return nil, models.CodeMySQLError
+		}
+		var AnsList []*models.ListBook
+		for _, Book := range Books {
+			T := BookListToCache(Book)
+			_ = redis.SetBookSummary(T)
+			err = redis.AddSaleRank(Book.BookID, Book.Sales)
+			if err != nil {
+				continue
+			}
+			AnsList = append(AnsList, T)
+		}
+		return AnsList, models.CodeSuccess
+	}
+	var Ans []*models.ListBook
+	for _, z := range results {
+		var BookID int64
+		switch v := z.Member.(type) {
+		case int64:
+			BookID = v
+		case string:
+			var err error
+			BookID, err = strconv.ParseInt(v, 10, 64)
+			if err != nil {
+				zap.L().Error("ParseInt failed", zap.String("member", v), zap.Error(err))
+				continue
+			}
+		default:
+			zap.L().Error("unexpected member type", zap.Any("value", v))
+			continue
+		}
+		bookCache, err := redis.GetBookByBookID(BookID)
+		if err != nil {
+			book, err := mysql.GetBookByID(BookID)
+			if err != nil {
+				return nil, models.CodeMySQLError
+			}
+			T := BookListToCache(book)
+			_ = redis.SetBookSummary(T)
+			Ans = append(Ans, T)
+			continue
+		}
+		T := redis.BookCacheToListBook(bookCache)
+		_ = redis.SetBookSummary(T)
+		Ans = append(Ans, T)
+	}
+	return Ans, models.CodeSuccess
 }

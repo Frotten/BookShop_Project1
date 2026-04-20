@@ -3,6 +3,7 @@ package mysql
 import (
 	"Project1_Shop/models"
 
+	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
 
@@ -12,6 +13,15 @@ func GetBooksPageByScore(page int64) ([]*models.Book, int64, error) {
 	DB.Model(&models.Book{}).Count(&TotalPage)
 	offset := (page - 1) * models.PageSize
 	err := DB.Order("score DESC").Limit(models.PageSize).Offset(int(offset)).Find(&Books).Error //从高到低对分数排序后分页查询（加上Where还能筛选）
+	return Books, TotalPage, err
+}
+
+func GetBooksPageBySale(page int64) ([]*models.Book, int64, error) {
+	var Books []*models.Book
+	var TotalPage int64
+	DB.Model(&models.Book{}).Count(&TotalPage)
+	offset := (page - 1) * models.PageSize
+	err := DB.Order("sales DESC").Limit(models.PageSize).Offset(int(offset)).Find(&Books).Error
 	return Books, TotalPage, err
 }
 
@@ -77,7 +87,6 @@ func GetRateBookByID(ID int64) (*models.RateBook, error) {
 			BookID:     ID,
 			ScoreCount: 0,
 			Score:      0,
-			Sale:       0,
 		})
 		result = DB.Where("book_id = ?", ID).First(&rateBook)
 		if result.RowsAffected == 0 {
@@ -186,4 +195,16 @@ func GetUserRatingByUserID(UserID int64) ([]*models.UserRateBook, error) {
 	var URB []*models.UserRateBook
 	err := DB.Where("user_id = ?", UserID).Find(&URB).Error
 	return URB, err
+}
+
+func SetBookSale(BookID, Quantity int64) error {
+	return DB.Model(&models.Book{}).
+		Where("book_id = ?", BookID).
+		Update("sales", gorm.Expr("sales + ?", Quantity)).Error
+}
+
+func ReduceSale(BookID, Quantity int64) error {
+	return DB.Model(&models.Book{}).
+		Where("book_id = ?", BookID).
+		Update("sales", gorm.Expr("sales - ?", Quantity)).Error
 }

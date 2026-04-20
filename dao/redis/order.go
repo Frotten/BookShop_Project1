@@ -225,3 +225,43 @@ func GetShipOrderID() ([]string, error) {
 	key := "order:ship"
 	return RDB.SMembers(ctx, key).Result()
 }
+
+func DeleteOrderIDFromShipCache(orderID int64) error {
+	key := "order:ship"
+	return RDB.SRem(ctx, key, orderID).Err()
+}
+
+func GetItemsByOrderID(orderID int64) ([]*models.OrderItem, error) {
+	key := "items:order:" + strconv.FormatInt(orderID, 10)
+	members, err := RDB.SMembers(ctx, key).Result()
+	if err != nil || len(members) == 0 {
+		return nil, err
+	}
+	pipe := RDB.Pipeline()
+	cmds := make([]*redis.MapStringStringCmd, len(members))
+	for i, idStr := range members {
+		cmds[i] = pipe.HGetAll(ctx, "order:items:"+idStr)
+	}
+	if _, err := pipe.Exec(ctx); err != nil {
+		return nil, err
+	}
+	items := make([]*models.OrderItem, 0, len(members))
+	for i, idStr := range members {
+		data, err := cmds[i].Result()
+		if err != nil || len(data) == 0 {
+			continue
+		}
+		id, _ := strconv.ParseInt(idStr, 10, 64)
+		bookID, _ := strconv.ParseInt(data["book_id"], 10, 64)
+		price, _ := strconv.ParseInt(data["price"], 10, 64)
+		qty, _ := strconv.ParseInt(data["quantity"], 10, 64)
+		items = append(items, &models.OrderItem{
+			ID:       id,
+			OrderID:  orderID,
+			BookID:   bookID,
+			Price:    price,
+			Quantity: qty,
+		})
+	}
+	return items, nil
+}

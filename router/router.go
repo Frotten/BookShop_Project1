@@ -28,7 +28,7 @@ func SetUp() *gin.Engine {
 		v1.GET("/getBooksJSON", controllers.GetBooksJSON)
 		v1.GET("/getBooksJSON/:page", controllers.ScoreBookHandle)
 		v1.GET("/getBookDetail/:book_id", controllers.GetBookParamHandle)
-		//v1.GET("/topSale", controllers.TopSaleHandle)
+		v1.GET("/topSale", controllers.TopSaleHandle)
 		v1.GET("/topScore", controllers.TopScoreHandle)
 		v1.GET("/comments", controllers.CommentsHandle)
 		v1.GET("/getBookTitle/:title", controllers.GetBookByTitleHandle)
@@ -50,6 +50,7 @@ func SetUp() *gin.Engine {
 			Login.GET("/orderDetail/:order_id", controllers.GetOrderDetailHandle)
 			Login.POST("/orderPay", controllers.OrderPayHandle)
 			Login.POST("/orderCancel", controllers.OrderCancelHandle)
+			Login.POST("/orderConfirm", controllers.OrderConfirmHandle)
 		}
 	}
 	v2 := r.Group("/page")
@@ -93,6 +94,7 @@ func SetUp() *gin.Engine {
 		order := v3.Group("/order")
 		{
 			order.GET("/list", controllers.GetShipOrderHandle)
+			order.POST("/orderShip", controllers.OrderShipHandle)
 		}
 	}
 	zap.L().Info("SetUp Server ...")
