@@ -33,10 +33,19 @@ func BookToCache(book *models.Book) *models.BookCache {
 	}
 }
 
-func GetPageBooks(Page int64) (*models.Page, error) {
+func GetPageBooks(rKey string, Page int64) (*models.Page, error) {
+	return getPageBooksGeneric(rKey, Page, mysql.GetBooksPageByScore)
+}
+
+func GetPageBooksBySale(rKey string, Page int64) (*models.Page, error) {
+	return getPageBooksGeneric(rKey, Page, mysql.GetBooksPageBySale)
+}
+
+func getPageBooksGeneric(rKey string, Page int64, fetchFunc func(page int64) ([]*models.Book, int64, error),
+) (*models.Page, error) {
 	start := (Page - 1) * models.PageSize
 	end := start + models.PageSize - 1
-	ids, total, err := redis.GetRankIDsByScore(start, end)
+	ids, total, err := redis.GetRankIDs(rKey, start, end)
 	if err != nil {
 		return nil, err
 	}
@@ -48,7 +57,7 @@ func GetPageBooks(Page int64) (*models.Page, error) {
 			Total: total,
 		}, nil
 	}
-	SQLBooks, total, err := mysql.GetBooksPageByScore(Page)
+	SQLBooks, total, err := fetchFunc(Page)
 	if err != nil {
 		return nil, err
 	}
@@ -61,12 +70,11 @@ func GetPageBooks(Page int64) (*models.Page, error) {
 			continue
 		}
 	}
-	Pages := &models.Page{
+	return &models.Page{
 		Page:  Page,
 		Total: total,
 		Data:  SQLBooks,
-	}
-	return Pages, nil
+	}, nil
 }
 
 func AddBook(p *models.AddBookParam) models.ResCode {
@@ -278,7 +286,7 @@ func GetBookPriceByIDs(BookIDs []int64) (map[int64]int64, error) {
 func GetTopSaleList() ([]*models.ListBook, models.ResCode) {
 	results, err := redis.GetSaleList()
 	if err != nil || len(results) <= 0 {
-		Books, _, err := mysql.GetBooksPageBySale(1)
+		Books, err := mysql.GetAllBooksBySale()
 		if err != nil {
 			return nil, models.CodeMySQLError
 		}

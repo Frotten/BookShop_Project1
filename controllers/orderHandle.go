@@ -152,3 +152,25 @@ func OrderConfirmHandle(c *gin.Context) {
 	}
 	HandleSuccess(c, nil)
 }
+
+//func Seckill(c *gin.Context) {
+//	UserID, ok := c.Get("userID")
+//	if !ok || UserID == nil {
+//		zap.L().Error("GetUserOrderHandle failed: UserID not found in context")
+//		HandleResponse(c, models.CodeServerBusy)
+//		return
+//	}
+//	productIDStr := c.Param("id")
+//	productID, err := strconv.ParseInt(productIDStr, 10, 64)
+//	if err != nil || productID <= 0 {
+//		HandleResponse(c, models.CodeInvalidParam)
+//		return
+//	}
+//	res := logic.Seckill(UserID.(int64), productID)
+//	if res != models.CodeSuccess {
+//		zap.L().Error("Seckill failed")
+//		HandleResponse(c, res)
+//		return
+//	}
+//	HandleSuccess(c, nil)
+//}

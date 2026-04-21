@@ -16,6 +16,12 @@ func GetBooksPageByScore(page int64) ([]*models.Book, int64, error) {
 	return Books, TotalPage, err
 }
 
+func GetAllBooksByScore() ([]*models.Book, error) {
+	var Books []*models.Book
+	err := DB.Order("score DESC").Find(&Books).Error
+	return Books, err
+}
+
 func GetBooksPageBySale(page int64) ([]*models.Book, int64, error) {
 	var Books []*models.Book
 	var TotalPage int64
@@ -23,6 +29,12 @@ func GetBooksPageBySale(page int64) ([]*models.Book, int64, error) {
 	offset := (page - 1) * models.PageSize
 	err := DB.Order("sales DESC").Limit(models.PageSize).Offset(int(offset)).Find(&Books).Error
 	return Books, TotalPage, err
+}
+
+func GetAllBooksBySale() ([]*models.Book, error) {
+	var Books []*models.Book
+	err := DB.Order("sales DESC").Find(&Books).Error
+	return Books, err
 }
 
 func AddBook(book *models.Book) error {

@@ -395,8 +395,8 @@ func MGetBooks(ids []int64) ([]*models.BookCache, []int64, error) {
 	return books, missIDs, nil
 }
 
-func GetRankIDsByScore(start, end int64) ([]int64, int64, error) {
-	key := "book:rank:score"
+func GetRankIDs(rKey string, start, end int64) ([]int64, int64, error) {
+	key := "book:rank:" + rKey
 	idsZ, err := RDB.ZRevRangeWithScores(ctx, key, start, end).Result()
 	if err != nil {
 		return nil, 0, err

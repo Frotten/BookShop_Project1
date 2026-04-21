@@ -32,6 +32,8 @@ func SetUp() *gin.Engine {
 		v1.GET("/topScore", controllers.TopScoreHandle)
 		v1.GET("/comments", controllers.CommentsHandle)
 		v1.GET("/getBookTitle/:title", controllers.GetBookByTitleHandle)
+		v1.GET("/getBooksBySaleJSON", controllers.GetBooksBySaleJSON)
+		v1.GET("/getBooksBySaleJSON/:page", controllers.SaleBookHandle)
 		Login := v1.Use(middlewares.JWTAuthMiddleware(), middlewares.CheckLoginOnlyMiddleware())
 		{
 			Login.GET("/userInfo", controllers.GetUserInfoHandle)

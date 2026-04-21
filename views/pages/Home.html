@@ -216,16 +216,15 @@
         </div>`;
 
         try {
-            // 第 1 页走无参接口，其他页走 /:page 接口
-            // 当前后端 /api/getBooksJSON/:page 按评分排序
-            // 如需销量排序，请添加对应后端接口后在此替换 URL
-            const url = page === 1 ? '/api/getBooksJSON' : `/api/getBooksJSON/${page}`;
+            const isSaleSort = currentSort === 'sale';
+            const baseUrl = isSaleSort ? '/api/getBooksBySaleJSON' : '/api/getBooksJSON';
+            const url = page === 1 ? baseUrl : `${baseUrl}/${page}`;
+
             const res = await apiFetch(url, { method: 'GET' });
             const result = await res.json();
 
             if (result.code === 1000) {
                 const pageData = result.data;
-                // pageData 结构：{ page, total, data: [] }
                 const books = pageData.data || [];
                 totalBooks = pageData.total || 0;
                 totalPages = Math.ceil(totalBooks / PAGE_SIZE);

@@ -20,7 +20,7 @@ func ScoreBookHandle(c *gin.Context) {
 		HandleResponse(c, models.CodeInvalidParam)
 		return
 	}
-	Pages, err := logic.GetPageBooks(PageInt)
+	Pages, err := logic.GetPageBooks("score", PageInt)
 	if err != nil {
 		HandleResponse(c, models.CodeInvalidParam)
 		return
@@ -30,7 +30,32 @@ func ScoreBookHandle(c *gin.Context) {
 
 func GetBooksJSON(c *gin.Context) {
 	PageInt := int64(1)
-	Pages, err := logic.GetPageBooks(PageInt)
+	Pages, err := logic.GetPageBooks("score", PageInt)
+	if err != nil {
+		HandleResponse(c, models.CodeInvalidParam)
+		return
+	}
+	HandleSuccess(c, Pages)
+}
+
+func GetBooksBySaleJSON(c *gin.Context) {
+	PageInt := int64(1)
+	Pages, err := logic.GetPageBooksBySale("sale", PageInt)
+	if err != nil {
+		HandleResponse(c, models.CodeInvalidParam)
+		return
+	}
+	HandleSuccess(c, Pages)
+}
+
+func SaleBookHandle(c *gin.Context) {
+	PageString := c.Param("page")
+	PageInt, err := strconv.ParseInt(PageString, 10, 64)
+	if err != nil || PageInt <= 0 {
+		HandleResponse(c, models.CodeInvalidParam)
+		return
+	}
+	Pages, err := logic.GetPageBooksBySale("sale", PageInt)
 	if err != nil {
 		HandleResponse(c, models.CodeInvalidParam)
 		return
