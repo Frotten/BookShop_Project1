@@ -105,6 +105,7 @@ func AddBook(p *models.AddBookParam) models.ResCode {
 		return models.CodeRedisError
 	}
 	err = redis.AddScoreRank(book.BookID, 0)
+	err = redis.AddSaleRank(book.BookID, 0)
 	if err != nil {
 		return models.CodeRedisError
 	}
@@ -317,6 +318,7 @@ func GetTopSaleList() ([]*models.ListBook, models.ResCode) {
 				return nil, models.CodeMySQLError
 			}
 			T := BookListToCache(book)
+			_ = redis.SetBookCache(BookToCache(book), book.Score)
 			_ = redis.SetBookSummary(T)
 			Ans = append(Ans, T)
 			continue

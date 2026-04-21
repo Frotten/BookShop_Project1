@@ -133,8 +133,7 @@
 
             loadingState.style.display = 'none';
 
-            if (result.code === CODE_SUCCESS && result.data) {
-                // /admin/order/list 已经返回 status=1 的订单，不需要再过滤
+            if (result.code === CODE_SUCCESS) {
                 const orders = result.data || [];
                 pendingCount.textContent = orders.length;
 
@@ -143,7 +142,6 @@
                     return;
                 }
 
-                // 渲染订单列表
                 renderOrders(orders);
             } else if (result.code === CODE_NEED_LOGIN || result.code === CODE_INVALID_TOKEN) {
                 showToast('请先登录管理员账号', true);

@@ -75,7 +75,9 @@ func DeleteBook(ID int64) error {
 }
 
 func UpdateBook(book *models.Book) error {
-	result := DB.Save(book)
+	result := DB.Select("title", "author", "publisher", "introduction", "stock", "price", "cover_image").
+		Where("book_id = ?", book.BookID).
+		Updates(book)
 	return result.Error
 }
 

@@ -137,6 +137,7 @@ func SetBookCache(Book *models.BookCache, Score int64) error {
 		"introduction": Book.Introduction,
 		"stock":        Book.Stock,
 		"price":        Book.Price,
+		"sales":        Book.Sales,
 		"score":        Score,
 		"cover_image":  Book.CoverImage,
 		"tags":         tagsJSON,

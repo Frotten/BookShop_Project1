@@ -30,7 +30,31 @@
 <div class="home-layout">
     <!-- 左侧图书网格 -->
     <div class="book-grid-section">
-        <h2 style="margin-bottom:1rem;"><i class="ri-book-shelf-line"></i> 图书列表</h2>
+
+        <!-- 秒杀入口横幅 -->
+        <a href="/page/SeckillPage" class="seckill-banner">
+            <div class="seckill-icon">
+                <i class="ri-flashlight-line"></i>
+            </div>
+            <div class="seckill-text">
+                <span class="seckill-title"><i class="ri-timer-flash-line"></i> 限时秒杀</span>
+                <span class="seckill-subtitle">超低折扣 · 限量抢购 · 每日更新</span>
+            </div>
+            <i class="ri-arrow-right-s-line seckill-arrow"></i>
+        </a>
+
+        <!-- 图书列表区域标题 + 排序切换 -->
+        <div class="section-header">
+            <h2><i class="ri-book-shelf-line"></i> 图书列表</h2>
+            <div class="section-sort-tabs">
+                <button class="sort-tab active" data-sort="score" onclick="switchSort(this)">
+                    <i class="ri-star-smile-line"></i> 评分排序
+                </button>
+                <button class="sort-tab" data-sort="sale" onclick="switchSort(this)">
+                    <i class="ri-bar-chart-2-line"></i> 销量排序
+                </button>
+            </div>
+        </div>
 
         <!-- ===== 搜索栏 ===== -->
         <div class="search-bar-wrapper">
@@ -69,8 +93,26 @@
             </div>
         </div>
 
+        <!-- 图书网格 -->
         <div class="grid" id="book-grid">
             <!-- 动态插入图书卡片 -->
+        </div>
+
+        <!-- ===== 分页组件 ===== -->
+        <div class="pagination-wrapper" id="pagination-wrapper" style="display:none;">
+            <div class="pagination-info" id="pagination-info"></div>
+            <div class="pagination-controls" id="pagination-controls"></div>
+            <div class="pagination-jump">
+                <span>跳至</span>
+                <input
+                    type="number"
+                    id="jump-input"
+                    min="1"
+                    placeholder="页码"
+                    onkeydown="if(event.key==='Enter') jumpToPage()"
+                >
+                <button class="btn-jump" onclick="jumpToPage()">GO</button>
+            </div>
         </div>
     </div>
 
@@ -88,8 +130,20 @@
 
 <script src="/static/js/CommonScript.js"></script>
 <script>
+    // ===== 状态变量 =====
     let searchTimer = null;
     let selectedIndex = -1;
+
+    // 分页相关状态
+    let currentPage = 1;      // 当前页码
+    let totalBooks = 0;       // 总书籍数
+    let totalPages = 0;       // 总页数
+    const PAGE_SIZE = 8;      // 与后端 PageSize 保持一致
+
+    // 当前排序方式（score | sale）
+    // 注意：后端分页接口 /api/getBooksJSON/:page 按评分排序
+    // 如有销量排序接口后续可在此扩展
+    let currentSort = 'score';
 
     document.addEventListener("DOMContentLoaded", function() {
         // 1. 检查登录状态
@@ -105,8 +159,8 @@
             }
         });
 
-        // 2. 获取图书列表
-        fetchBooks();
+        // 2. 获取第一页图书
+        fetchBooks(1);
 
         // 3. 初始化排行榜（默认加载销量榜）
         fetchRanking('sales');
@@ -131,7 +185,6 @@
 
         // 6. 点击其他区域关闭下拉列表
         document.addEventListener('click', function(e) {
-            const dropdown = document.getElementById('searchDropdown');
             const wrapper = document.querySelector('.search-bar-wrapper');
             if (!wrapper.contains(e.target)) {
                 hideDropdown();
@@ -145,6 +198,194 @@
             }
         });
     });
+
+    // ===== 排序切换 =====
+    function switchSort(el) {
+        document.querySelectorAll('.sort-tab').forEach(t => t.classList.remove('active'));
+        el.classList.add('active');
+        currentSort = el.dataset.sort;
+        fetchBooks(1);
+    }
+
+    // ===== 图书列表（分页） =====
+    async function fetchBooks(page) {
+        const grid = document.getElementById('book-grid');
+        grid.innerHTML = `<div style="grid-column:1/-1; text-align:center; padding:3rem 1rem; color:var(--gray-600);">
+            <i class="ri-loader-4-line ri-spin" style="font-size:2rem;display:block;margin-bottom:0.5rem;"></i>
+            加载中...
+        </div>`;
+
+        try {
+            // 第 1 页走无参接口，其他页走 /:page 接口
+            // 当前后端 /api/getBooksJSON/:page 按评分排序
+            // 如需销量排序，请添加对应后端接口后在此替换 URL
+            const url = page === 1 ? '/api/getBooksJSON' : `/api/getBooksJSON/${page}`;
+            const res = await apiFetch(url, { method: 'GET' });
+            const result = await res.json();
+
+            if (result.code === 1000) {
+                const pageData = result.data;
+                // pageData 结构：{ page, total, data: [] }
+                const books = pageData.data || [];
+                totalBooks = pageData.total || 0;
+                totalPages = Math.ceil(totalBooks / PAGE_SIZE);
+                currentPage = pageData.page || page;
+
+                renderBooks(books);
+                renderPagination();
+            } else {
+                grid.innerHTML = `<div class="no-result" style="grid-column:1/-1;">
+                    <i class="ri-error-warning-line"></i><p>获取图书列表失败</p>
+                </div>`;
+            }
+        } catch (e) {
+            console.error(e);
+            grid.innerHTML = `<div class="no-result" style="grid-column:1/-1;">
+                <i class="ri-wifi-off-line"></i><p>网络异常，请稍后重试</p>
+            </div>`;
+        }
+    }
+
+    function renderBooks(books) {
+        const grid = document.getElementById('book-grid');
+        if (!books || books.length === 0) {
+            grid.innerHTML = `
+                <div class="no-result" style="grid-column:1/-1;">
+                    <i class="ri-book-2-line" style="font-size:3rem; opacity:0.4; display:block; margin-bottom:0.75rem;"></i>
+                    <p>暂无书籍</p>
+                </div>`;
+            return;
+        }
+        let html = '';
+        books.forEach(book => {
+            const priceYuan = (book.price / 100).toFixed(2);
+            const score = book.score ? (book.score / 100).toFixed(2) : '暂无';
+            html += `
+            <div class="book-card" data-book-id="${book.book_id}">
+                <h3>${escapeHtml(book.title)}</h3>
+                <p><i class="ri-pencil-line"></i> 作者：${escapeHtml(book.author)}</p>
+                <p class="score"><i class="ri-star-smile-line"></i> 评分：${score}</p>
+                <p class="price"><i class="ri-money-cny-circle-line"></i> ￥${priceYuan}</p>
+                <button
+                    class="add-to-cart-btn"
+                    data-id="${book.book_id}"
+                    data-title="${escapeHtml(book.title)}"
+                    data-price="${book.price}"
+                    data-stock="${book.stock || 99}"
+                >
+                    <i class="ri-shopping-cart-line"></i> 加入购物车
+                </button>
+            </div>
+            `;
+        });
+        grid.innerHTML = html;
+
+        grid.onclick = function(e) {
+            const button = e.target.closest('.add-to-cart-btn');
+            if (button) {
+                e.stopPropagation();
+                showQuantityDialog(button.dataset.id, button.dataset.title, button.dataset.price, parseInt(button.dataset.stock) || 99);
+                return;
+            }
+            const card = e.target.closest('.book-card');
+            if (card && card.dataset.bookId) {
+                window.location.href = `/page/BooksPage?book_id=${card.dataset.bookId}`;
+            }
+        };
+    }
+
+    // ===== 分页渲染 =====
+    function renderPagination() {
+        const wrapper = document.getElementById('pagination-wrapper');
+        const info = document.getElementById('pagination-info');
+        const controls = document.getElementById('pagination-controls');
+
+        if (totalPages <= 1) {
+            wrapper.style.display = 'none';
+            return;
+        }
+        wrapper.style.display = 'flex';
+
+        // 分页信息
+        const start = (currentPage - 1) * PAGE_SIZE + 1;
+        const end = Math.min(currentPage * PAGE_SIZE, totalBooks);
+        info.innerHTML = `共 <span>${totalBooks}</span> 本书 · 第 <span>${start}–${end}</span> 本 · 第 <span>${currentPage}</span>/<span>${totalPages}</span> 页`;
+
+        // 更新跳转输入框最大值
+        const jumpInput = document.getElementById('jump-input');
+        if (jumpInput) jumpInput.max = totalPages;
+
+        // 页码按钮
+        controls.innerHTML = buildPageButtons();
+    }
+
+    function buildPageButtons() {
+        let html = '';
+
+        // 上一页
+        html += `<button class="page-btn" onclick="goPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''} title="上一页">
+            <i class="ri-arrow-left-s-line"></i>
+        </button>`;
+
+        // 页码按钮（最多显示 7 个，超出用省略号）
+        const pages = getPageRange(currentPage, totalPages);
+        pages.forEach(p => {
+            if (p === '...') {
+                html += `<span class="page-ellipsis">···</span>`;
+            } else {
+                html += `<button class="page-btn ${p === currentPage ? 'active' : ''}" onclick="goPage(${p})">${p}</button>`;
+            }
+        });
+
+        // 下一页
+        html += `<button class="page-btn" onclick="goPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''} title="下一页">
+            <i class="ri-arrow-right-s-line"></i>
+        </button>`;
+
+        return html;
+    }
+
+    // 生成页码范围（带省略号）
+    function getPageRange(current, total) {
+        if (total <= 7) {
+            return Array.from({ length: total }, (_, i) => i + 1);
+        }
+        const pages = [];
+        // 始终显示第 1 页
+        pages.push(1);
+        if (current > 3) pages.push('...');
+        // 当前页附近
+        const start = Math.max(2, current - 1);
+        const end = Math.min(total - 1, current + 1);
+        for (let i = start; i <= end; i++) {
+            pages.push(i);
+        }
+        if (current < total - 2) pages.push('...');
+        // 始终显示最后一页
+        pages.push(total);
+        return pages;
+    }
+
+    // 跳转到指定页
+    function goPage(page) {
+        if (page < 1 || page > totalPages || page === currentPage) return;
+        // 滚动到图书列表顶部
+        document.querySelector('.book-grid-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        fetchBooks(page);
+    }
+
+    // 跳转输入框
+    function jumpToPage() {
+        const input = document.getElementById('jump-input');
+        const page = parseInt(input.value);
+        if (!page || page < 1 || page > totalPages) {
+            input.focus();
+            input.select();
+            return;
+        }
+        input.value = '';
+        goPage(page);
+    }
 
     // ===== 搜索逻辑 =====
 
@@ -181,7 +422,6 @@
 
     // 更新下拉列表头部
     function updateDropdownHeader(keyword, count, isLoading) {
-        const header = document.getElementById('dropdownHeader');
         const headerText = document.getElementById('dropdownHeaderText');
         if (isLoading) {
             headerText.textContent = '搜索中...';
@@ -198,7 +438,6 @@
             return;
         }
 
-        const dropdown = document.getElementById('searchDropdown');
         const list = document.getElementById('dropdownList');
 
         // 显示加载状态
@@ -320,71 +559,6 @@
         document.getElementById('btnClear').classList.remove('visible');
         hideDropdown();
         document.getElementById('searchInput').focus();
-    }
-
-    // ===== 图书列表 =====
-    async function fetchBooks() {
-        try {
-            const res = await apiFetch('/api/getBooksJSON', { method: 'GET' });
-            const result = await res.json();
-            if (result.code === 1000) {
-                const books = result.data.data || [];
-                renderBooks(books);
-            } else {
-                alert('获取图书列表失败：' + result.msg);
-            }
-        } catch (res) {
-            console.error(res);
-            alert('请求失败，请稍后重试:' + res);
-        }
-    }
-
-    function renderBooks(books) {
-        const grid = document.getElementById('book-grid');
-        if (!books || books.length === 0) {
-            grid.innerHTML = `
-                <div class="no-result" style="grid-column:1/-1;">
-                    <i class="ri-book-2-line" style="font-size:3rem; opacity:0.4; display:block; margin-bottom:0.75rem;"></i>
-                    <p>暂无书籍</p>
-                </div>`;
-            return;
-        }
-        let html = '';
-        books.forEach(book => {
-            const priceYuan = (book.price / 100).toFixed(2);
-            const score = book.score ? (book.score / 100).toFixed(2) : '暂无';
-            html += `
-            <div class="book-card" data-book-id="${book.book_id}">
-                <h3>${escapeHtml(book.title)}</h3>
-                <p><i class="ri-pencil-line"></i> 作者：${escapeHtml(book.author)}</p>
-                <p class="score"><i class="ri-star-smile-line"></i> 评分：${score}</p>
-                <p class="price"><i class="ri-money-cny-circle-line"></i> ￥${priceYuan}</p>
-                <button
-                    class="add-to-cart-btn"
-                    data-id="${book.book_id}"
-                    data-title="${escapeHtml(book.title)}"
-                    data-price="${book.price}"
-                    data-stock="${book.stock || 99}"
-                >
-                    <i class="ri-shopping-cart-line"></i> 加入购物车
-                </button>
-            </div>
-            `;
-        });
-        grid.innerHTML = html;
-
-        grid.onclick = function(e) {
-            const button = e.target.closest('.add-to-cart-btn');
-            if (button) {
-                e.stopPropagation();
-                showQuantityDialog(button.dataset.id, button.dataset.title, button.dataset.price, parseInt(button.dataset.stock) || 99);
-                return;
-            }
-            const card = e.target.closest('.book-card');
-            if (card && card.dataset.bookId) {
-                window.location.href = `/page/BooksPage?book_id=${card.dataset.bookId}`;
-            }
-        };
     }
 
     // ===== 排行榜 =====
