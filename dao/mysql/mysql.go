@@ -34,6 +34,8 @@ func AutoMigration() {
 		&models.OrderItem{},
 		&models.CommentBook{},
 		&models.UserRateBook{},
+		&models.SeckillOrder{},
+		&models.SeckillProduct{},
 	)
 }
 

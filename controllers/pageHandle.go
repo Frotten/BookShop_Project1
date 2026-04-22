@@ -61,3 +61,11 @@ func OrderDetailPageHandle(c *gin.Context) {
 func OrderShipmentPageHandle(c *gin.Context) {
 	c.HTML(http.StatusOK, "OrderShipment.html", nil)
 }
+
+func SeckillManagePageHandle(c *gin.Context) {
+	c.HTML(http.StatusOK, "SeckillManage.html", nil)
+}
+
+func SeckillPageHandle(c *gin.Context) {
+	c.HTML(http.StatusOK, "Seckill.html", nil)
+}

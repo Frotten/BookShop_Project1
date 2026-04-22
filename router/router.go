@@ -34,6 +34,8 @@ func SetUp() *gin.Engine {
 		v1.GET("/getBookTitle/:title", controllers.GetBookByTitleHandle)
 		v1.GET("/getBooksBySaleJSON", controllers.GetBooksBySaleJSON)
 		v1.GET("/getBooksBySaleJSON/:page", controllers.SaleBookHandle)
+		v1.GET("/seckill/list", controllers.SeckillListHandle)
+		v1.GET("/seckill/:id", controllers.SeckillDetailHandle)
 		Login := v1.Use(middlewares.JWTAuthMiddleware(), middlewares.CheckLoginOnlyMiddleware())
 		{
 			Login.GET("/userInfo", controllers.GetUserInfoHandle)
@@ -53,6 +55,7 @@ func SetUp() *gin.Engine {
 			Login.POST("/orderPay", controllers.OrderPayHandle)
 			Login.POST("/orderCancel", controllers.OrderCancelHandle)
 			Login.POST("/orderConfirm", controllers.OrderConfirmHandle)
+			Login.POST("/seckill/do", controllers.SeckillHandle)
 		}
 	}
 	v2 := r.Group("/page")
@@ -63,6 +66,7 @@ func SetUp() *gin.Engine {
 		v2.GET("/AdminLoginPage", controllers.AdminLoginPageHandle)
 		v2.GET("/AdminRegisterPage", controllers.AdminRegisterPageHandle)
 		v2.GET("/BooksPage", controllers.BookDetailPageHandle)
+		v2.GET("/SeckillPage", controllers.SeckillPageHandle)
 		User := v2.Use(middlewares.CookieAuthMiddleware())
 		{
 			User.GET("/ProfilePage", controllers.ProfilePageHandle)
@@ -75,6 +79,7 @@ func SetUp() *gin.Engine {
 			Admin.GET("/DeleteBookPage", controllers.DeleteBookPageHandle)
 			Admin.GET("/UpdateBookPage", controllers.UpdateBookPageHandle)
 			Admin.GET("/OrderShipmentPage", controllers.OrderShipmentPageHandle)
+			Admin.GET("/SeckillManagePage", controllers.SeckillManagePageHandle)
 		}
 	}
 	v3 := r.Group("/admin")
@@ -88,15 +93,16 @@ func SetUp() *gin.Engine {
 			book.POST("/update", controllers.AdminUpdateBookHandle)
 			book.GET("/getBookTitle/:title", controllers.GetBookByTitleHandle)
 		}
-		//user := v3.Group("/user")
-		//{
-		//	user.GET("/list", controllers.AdminListUserHandle)
-		//	user.GET("/manage", controllers.AdminManageUserHandle)
-		//}
 		order := v3.Group("/order")
 		{
 			order.GET("/list", controllers.GetShipOrderHandle)
 			order.POST("/orderShip", controllers.OrderShipHandle)
+		}
+		seckill := v3.Group("/seckill")
+		{
+			seckill.GET("/list", controllers.AdminSeckillListHandle)
+			seckill.POST("/create", controllers.AdminCreateSeckillHandle)
+			seckill.POST("/down/:id", controllers.AdminDownSeckillHandle)
 		}
 	}
 	zap.L().Info("SetUp Server ...")

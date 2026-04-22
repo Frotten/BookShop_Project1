@@ -1,7 +1,9 @@
 package mq
 
 import (
+	"Project1_Shop/models"
 	"Project1_Shop/settings"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"sync"
@@ -20,6 +22,9 @@ const (
 	OrderPaymentQueue         = "order.payment"
 	OrderPaymentRoutingKey    = "order.payment"
 	OrderPaymentExchange      = "order.payment.exchange"
+	SeckillQueue              = "seckill.order"
+	SeckillExchange           = "seckill.exchange"
+	SeckillRoutingKey         = "seckill.order"
 )
 
 var (
@@ -101,6 +106,22 @@ func Init(cfg *settings.RabbitMQConfig) error {
 	if err := ch.QueueBind(OrderPaymentQueue, OrderPaymentRoutingKey, OrderPaymentExchange, false, nil); err != nil {
 		return fmt.Errorf("bind payment queue failed: %w", err)
 	}
+	if err := ch.ExchangeDeclare(
+		SeckillExchange,
+		"direct",
+		true, false, false, false, nil,
+	); err != nil {
+		return fmt.Errorf("declare seckill exchange failed: %w", err)
+	}
+	if _, err := ch.QueueDeclare(
+		SeckillQueue,
+		true, false, false, false, nil,
+	); err != nil {
+		return fmt.Errorf("declare seckill queue failed: %w", err)
+	}
+	if err := ch.QueueBind(SeckillQueue, SeckillRoutingKey, SeckillExchange, false, nil); err != nil {
+		return fmt.Errorf("bind seckill queue failed: %w", err)
+	}
 
 	globalConn = conn
 	globalCh = ch
@@ -162,6 +183,29 @@ func publish(queue, body string) error {
 			DeliveryMode: amqp.Persistent,
 			ContentType:  "text/plain",
 			Body:         []byte(body),
+			Timestamp:    time.Now(),
+		},
+	)
+}
+
+func PublishSeckillOrder(msg *models.SeckillMsg) error {
+	data, err := json.Marshal(msg)
+	if err != nil {
+		return err
+	}
+	ch, err := getChannel()
+	if err != nil {
+		return err
+	}
+	return ch.Publish(
+		SeckillExchange,
+		SeckillRoutingKey,
+		false,
+		false,
+		amqp.Publishing{
+			DeliveryMode: amqp.Persistent,
+			ContentType:  "application/json",
+			Body:         data,
 			Timestamp:    time.Now(),
 		},
 	)

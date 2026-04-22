@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>秒杀管理 - 网络书城后台</title>
+    <link rel="stylesheet" href="/static/css/CommonStyle.css">
+    <link rel="stylesheet" href="/static/css/AdminHome.css">
+    <link rel="stylesheet" href="/static/css/SeckillManage.css">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css" rel="stylesheet"/>
+</head>
+<body>
+<header class="navbar">
+    <h1>
+        <a href="/page/AdminHomePage" style="color:inherit;text-decoration:none;">
+            <i class="ri-book-open-line"></i> 网络书城·后台
+        </a>
+    </h1>
+    <div class="nav-right">
+        <a href="/page/AdminHomePage"><i class="ri-home-4-line"></i> 后台首页</a>
+    </div>
+</header>
+
+<div class="manage-layout">
+    <div class="manage-header">
+        <h2><i class="ri-flashlight-fill" style="color:#ff4500;"></i> 秒杀活动管理</h2>
+        <a href="/page/SeckillPage" target="_blank" style="font-size:0.85rem; color:var(--primary);">
+            <i class="ri-eye-line"></i> 预览前台秒杀页
+        </a>
+    </div>
+
+    <!-- 创建活动 -->
+    <div class="section-card">
+        <h3><i class="ri-add-circle-line"></i> 创建新活动</h3>
+        <div class="form-grid">
+            <div class="form-group">
+                <label>书籍 ID</label>
+                <input type="number" id="f-book-id" placeholder="请输入书籍 book_id" min="1">
+            </div>
+            <div class="form-group">
+                <label>秒杀价（分，如 1900 = ¥19.00）</label>
+                <input type="number" id="f-seckill-price" placeholder="例：1900" min="1">
+            </div>
+            <div class="form-group">
+                <label>秒杀库存数量</label>
+                <input type="number" id="f-stock" placeholder="例：100" min="1">
+            </div>
+            <div class="form-group">
+                <label>开始时间</label>
+                <input type="text" id="f-start" placeholder="2026-04-21 22:00:00">
+            </div>
+            <div class="form-group">
+                <label>结束时间</label>
+                <input type="text" id="f-end" placeholder="2026-04-21 23:59:59">
+            </div>
+        </div>
+        <button class="btn-create" onclick="createSeckill()">
+            <i class="ri-flashlight-line"></i> 创建活动
+        </button>
+    </div>
+
+    <!-- 活动列表 -->
+    <div class="section-card">
+        <h3><i class="ri-list-check-2"></i> 活动列表</h3>
+        <div id="table-container">
+            <div class="table-loading"><i class="ri-loader-4-line ri-spin"></i> 加载中...</div>
+        </div>
+    </div>
+</div>
+
+<script src="/static/js/CommonScript.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', loadSeckillList);
+
+    async function loadSeckillList() {
+        const container = document.getElementById('table-container');
+        container.innerHTML = '<div class="table-loading"><i class="ri-loader-4-line ri-spin"></i> 加载中...</div>';
+        try {
+            const res = await apiFetch('/admin/seckill/list', { method: 'GET' });
+            const result = await res.json();
+            if (result.code === 1000) {
+                renderTable(result.data || []);
+            } else {
+                container.innerHTML = `<div class="table-loading">获取失败：${escapeHtml(result.msg)}</div>`;
+            }
+        } catch (e) {
+            container.innerHTML = '<div class="table-loading">网络异常，请刷新重试</div>';
+        }
+    }
+
+    function renderTable(list) {
+        const container = document.getElementById('table-container');
+        if (!list || list.length === 0) {
+            container.innerHTML = '<div class="table-loading">暂无秒杀活动</div>';
+            return;
+        }
+        let html = `
+        <table class="seckill-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>书籍</th>
+                    <th>秒杀价</th>
+                    <th>原价</th>
+                    <th>剩余库存</th>
+                    <th>开始时间</th>
+                    <th>结束时间</th>
+                    <th>状态</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>`;
+        list.forEach(item => {
+            const statusHtml = item.status === 1
+                ? `<span class="status-badge status-active"><i class="ri-checkbox-circle-line"></i> 进行中</span>`
+                : `<span class="status-badge status-down"><i class="ri-indeterminate-circle-line"></i> 已下架</span>`;
+            html += `
+            <tr>
+                <td>${item.id}</td>
+                <td>${escapeHtml(item.title)} <small style="color:var(--gray-600);">#${item.book_id}</small></td>
+                <td class="price-cell">￥${(item.seckill_price / 100).toFixed(2)}</td>
+                <td class="orig-price-cell">￥${(item.orig_price / 100).toFixed(2)}</td>
+                <td>${item.stock}</td>
+                <td>${escapeHtml(item.start_time)}</td>
+                <td>${escapeHtml(item.end_time)}</td>
+                <td>${statusHtml}</td>
+                <td>
+                    ${item.status === 1
+                        ? `<button class="btn-down" onclick="downSeckill(${item.id})"><i class="ri-close-circle-line"></i> 下架</button>`
+                        : `<span style="color:var(--gray-400);font-size:0.82rem;">—</span>`
+                    }
+                </td>
+            </tr>`;
+        });
+        html += '</tbody></table>';
+        container.innerHTML = html;
+    }
+
+    async function createSeckill() {
+        const bookID = parseInt(document.getElementById('f-book-id').value);
+        const price = parseInt(document.getElementById('f-seckill-price').value);
+        const stock = parseInt(document.getElementById('f-stock').value);
+        const startTime = document.getElementById('f-start').value.trim();
+        const endTime = document.getElementById('f-end').value.trim();
+
+        if (!bookID || !price || !stock || !startTime || !endTime) {
+            alert('请填写所有字段');
+            return;
+        }
+        try {
+            const res = await apiFetch('/admin/seckill/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    book_id: bookID,
+                    seckill_price: price,
+                    stock: stock,
+                    start_time: startTime,
+                    end_time: endTime
+                })
+            });
+            const result = await res.json();
+            if (result.code === 1000) {
+                alert('创建成功！');
+                ['f-book-id','f-seckill-price','f-stock','f-start','f-end'].forEach(id => {
+                    document.getElementById(id).value = '';
+                });
+                loadSeckillList();
+            } else {
+                alert('创建失败：' + (result.msg || '未知错误'));
+            }
+        } catch (e) {
+            alert('网络异常，请稍后重试');
+        }
+    }
+
+    async function downSeckill(id) {
+        if (!confirm(`确定下架活动 #${id}？下架后无法恢复，库存将停止售卖。`)) return;
+        try {
+            const res = await apiFetch(`/admin/seckill/down/${id}`, { method: 'POST' });
+            const result = await res.json();
+            if (result.code === 1000) {
+                alert('已成功下架');
+                loadSeckillList();
+            } else {
+                alert('操作失败：' + (result.msg || '未知错误'));
+            }
+        } catch (e) {
+            alert('网络异常，请稍后重试');
+        }
+    }
+
+    function escapeHtml(unsafe) {
+        if (!unsafe) return '';
+        return String(unsafe).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+    }
+</script>
+</body>
+</html>

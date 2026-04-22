@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>限时秒杀 - 网络书城</title>
+    <link rel="stylesheet" href="/static/css/CommonStyle.css">
+    <link rel="stylesheet" href="/static/css/SeckillPage.css">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css" rel="stylesheet"/>
+</head>
+<body>
+
+<header class="navbar">
+    <h1>
+        <a href="/page/HomePage" style="color: inherit; text-decoration: none;">
+            <i class="ri-book-open-line"></i> 网络书城
+        </a>
+    </h1>
+    <div class="nav-right">
+        <div id="auth-area" style="display:none; align-items:center; gap:12px;">
+            <a href="/page/ProfilePage"><i class="ri-user-line"></i> 个人中心</a>
+            <button onclick="logout()"><i class="ri-logout-box-line"></i> 退出</button>
+        </div>
+        <div id="guest-area" style="display:flex; align-items:center; gap:12px;">
+            <a href="/page/LoginPage" class="btn-link"><i class="ri-login-circle-line"></i> 登录</a>
+            <a href="/page/RegisterPage" class="btn-link"><i class="ri-user-add-line"></i> 注册</a>
+        </div>
+    </div>
+</header>
+
+<div class="seckill-layout">
+
+    <!-- 顶部横幅 -->
+    <div class="seckill-hero">
+        <div class="hero-text">
+            <div class="hero-title">
+                <i class="ri-flashlight-fill"></i> 限时秒杀
+            </div>
+            <div class="hero-subtitle">超低折扣 · 限量抢购 · 先到先得</div>
+        </div>
+        <div class="hero-countdown" id="hero-countdown" style="display:none;">
+            <div class="countdown-label"><i class="ri-time-line"></i> 距本场结束</div>
+            <div class="countdown-timer">
+                <div class="countdown-seg" id="cd-h">00</div>
+                <span class="countdown-sep">:</span>
+                <div class="countdown-seg" id="cd-m">00</div>
+                <span class="countdown-sep">:</span>
+                <div class="countdown-seg" id="cd-s">00</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 商品列表 -->
+    <div class="seckill-section-title">
+        <i class="ri-fire-fill"></i> 秒杀商品
+    </div>
+    <div class="seckill-grid" id="seckill-grid">
+        <div class="seckill-loading">
+            <i class="ri-loader-4-line ri-spin" style="font-size:2rem;display:block;margin-bottom:0.5rem;"></i>
+            加载中...
+        </div>
+    </div>
+
+</div>
+
+<script src="/static/js/CommonScript.js"></script>
+<script>
+    let seckillList = [];       // 活动数据
+    let countdownTimer = null;  // 倒计时定时器
+    let isBuying = false;       // 防连击锁
+
+    // ===== 初始化 =====
+    document.addEventListener('DOMContentLoaded', function () {
+        // 1. 检查登录状态
+        checkAuth().then(function (loggedIn) {
+            const authArea = document.getElementById('auth-area');
+            const guestArea = document.getElementById('guest-area');
+            if (loggedIn) {
+                authArea.style.display = 'flex';
+                guestArea.style.display = 'none';
+            } else {
+                authArea.style.display = 'none';
+                guestArea.style.display = 'flex';
+            }
+        });
+
+        // 2. 加载秒杀活动
+        loadSeckillList();
+
+        // 3. 每 30 秒刷新一次库存（轻量轮询）
+        setInterval(refreshStock, 30000);
+    });
+
+    // ===== 加载活动列表 =====
+    async function loadSeckillList() {
+        const grid = document.getElementById('seckill-grid');
+        try {
+            const res = await apiFetch('/api/seckill/list', { method: 'GET' });
+            const result = await res.json();
+            if (result.code === 1000) {
+                seckillList = result.data || [];
+                renderSeckillGrid(seckillList);
+                startCountdown(seckillList);
+            } else {
+                grid.innerHTML = renderEmpty();
+            }
+        } catch (e) {
+            console.error('loadSeckillList failed:', e);
+            grid.innerHTML = `<div class="seckill-loading"><i class="ri-wifi-off-line" style="font-size:2rem;display:block;margin-bottom:0.5rem;"></i>网络异常，请稍后重试</div>`;
+        }
+    }
+
+    // ===== 渲染商品网格 =====
+    function renderSeckillGrid(list) {
+        const grid = document.getElementById('seckill-grid');
+        if (!list || list.length === 0) {
+            grid.innerHTML = renderEmpty();
+            return;
+        }
+        let html = '';
+        list.forEach(item => {
+            const seckillYuan = (item.seckill_price / 100).toFixed(2);
+            const origYuan = (item.orig_price / 100).toFixed(2);
+            const discount = Math.round(item.seckill_price / item.orig_price * 10) / 10;
+            const discountText = discount < 9.9 ? `${discount}折` : '特惠';
+            const stockRatio = Math.max(0, Math.min(1, item.stock / (item.stock + 1)));  // 仅示意，实际可加总量字段
+            const isSoldOut = item.stock <= 0;
+            const isLow = !isSoldOut && item.stock <= 5;
+
+            let badgeHtml = '';
+            if (isSoldOut) {
+                badgeHtml = `<div class="seckill-badge sold-out">已抢完</div>`;
+            } else if (isLow) {
+                badgeHtml = `<div class="seckill-badge low">仅剩 ${item.stock} 件</div>`;
+            } else {
+                badgeHtml = `<div class="seckill-badge">剩余 ${item.stock}</div>`;
+            }
+
+            html += `
+            <div class="seckill-card" data-id="${item.id}">
+                ${badgeHtml}
+                <div class="seckill-card-cover">
+                    <i class="ri-book-2-line"></i>
+                </div>
+                <div class="seckill-card-body">
+                    <div class="seckill-card-title" title="${escapeHtml(item.title)}">${escapeHtml(item.title)}</div>
+                    <div class="seckill-price-row">
+                        <span class="seckill-price-unit">￥</span>
+                        <span class="seckill-price">${seckillYuan}</span>
+                        <span class="orig-price">￥${origYuan}</span>
+                        <span class="discount-tag">${discountText}</span>
+                    </div>
+                    <div class="stock-bar-wrapper">
+                        <div class="stock-bar-label">
+                            <span>已抢</span>
+                            <span>剩余 ${item.stock}</span>
+                        </div>
+                        <div class="stock-bar">
+                            <div class="stock-bar-fill ${isLow ? 'low' : ''}" id="bar-${item.id}" style="width:${getStockBarWidth(item)}%"></div>
+                        </div>
+                    </div>
+                    <button
+                        class="btn-seckill"
+                        id="btn-${item.id}"
+                        onclick="doSeckill(${item.id})"
+                        ${isSoldOut ? 'disabled' : ''}
+                    >
+                        ${isSoldOut
+                            ? '<i class="ri-emotion-sad-line"></i> 已抢完'
+                            : '<i class="ri-flashlight-line"></i> 立即抢购'
+                        }
+                    </button>
+                </div>
+            </div>`;
+        });
+        grid.innerHTML = html;
+    }
+
+    // 根据库存比例计算进度条宽度（没有总量时做保守估计）
+    function getStockBarWidth(item) {
+        if (item.stock <= 0) return 100;
+        if (item.stock <= 5) return 10;
+        if (item.stock <= 20) return 30;
+        if (item.stock <= 50) return 60;
+        return 85;
+    }
+
+    function renderEmpty() {
+        return `
+        <div class="seckill-empty">
+            <i class="ri-flashlight-line"></i>
+            <p>暂无进行中的秒杀活动</p>
+            <small>请关注下次活动，精彩不容错过！</small>
+        </div>`;
+    }
+
+    // ===== 倒计时 =====
+    function startCountdown(list) {
+        if (!list || list.length === 0) return;
+        // 取最早结束的活动作为倒计时目标
+        const now = new Date();
+        let nearest = null;
+        list.forEach(item => {
+            const endTime = new Date(item.end_time.replace(' ', 'T'));
+            if (!nearest || endTime < nearest) nearest = endTime;
+        });
+        if (!nearest || nearest <= now) return;
+
+        const countdown = document.getElementById('hero-countdown');
+        countdown.style.display = 'block';
+
+        if (countdownTimer) clearInterval(countdownTimer);
+        countdownTimer = setInterval(function () {
+            const left = nearest - new Date();
+            if (left <= 0) {
+                clearInterval(countdownTimer);
+                document.getElementById('cd-h').textContent = '00';
+                document.getElementById('cd-m').textContent = '00';
+                document.getElementById('cd-s').textContent = '00';
+                // 活动结束，刷新列表
+                setTimeout(loadSeckillList, 1500);
+                return;
+            }
+            const h = Math.floor(left / 3600000);
+            const m = Math.floor((left % 3600000) / 60000);
+            const s = Math.floor((left % 60000) / 1000);
+            document.getElementById('cd-h').textContent = String(h).padStart(2, '0');
+            document.getElementById('cd-m').textContent = String(m).padStart(2, '0');
+            document.getElementById('cd-s').textContent = String(s).padStart(2, '0');
+        }, 1000);
+    }
+
+    // ===== 参与秒杀 =====
+    async function doSeckill(productID) {
+        if (isBuying) return;
+
+        // 检查是否已登录
+        const loggedIn = await checkAuth();
+        if (!loggedIn) {
+            showToast('请先登录后再参与秒杀', 'warning');
+            setTimeout(() => { window.location.href = '/page/LoginPage'; }, 1200);
+            return;
+        }
+
+        isBuying = true;
+        const btn = document.getElementById(`btn-${productID}`);
+        const originalContent = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = `<i class="ri-loader-4-line ri-spin"></i> 抢购中...`;
+
+        try {
+            const res = await apiFetch('/api/seckill/do', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ product_id: productID })
+            });
+            const result = await res.json();
+
+            if (result.code === 1000) {
+                showToast('🎉 抢购成功！订单生成中，请前往个人中心查看', 'success');
+                btn.innerHTML = `<i class="ri-check-line"></i> 已抢购`;
+                btn.disabled = true;
+                // 刷新该商品库存
+                refreshSingleStock(productID);
+            } else {
+                const msg = result.msg || '抢购失败，请稍后重试';
+                showToast(msg, 'error');
+                btn.disabled = false;
+                btn.innerHTML = originalContent;
+            }
+        } catch (e) {
+            console.error('doSeckill failed:', e);
+            showToast('网络异常，请稍后重试', 'error');
+            btn.disabled = false;
+            btn.innerHTML = originalContent;
+        } finally {
+            setTimeout(() => { isBuying = false; }, 1000); // 1秒防连击
+        }
+    }
+
+    // ===== 刷新库存 =====
+    async function refreshStock() {
+        for (const item of seckillList) {
+            await refreshSingleStock(item.id);
+        }
+    }
+
+    async function refreshSingleStock(productID) {
+        try {
+            const res = await apiFetch(`/api/seckill/${productID}`, { method: 'GET' });
+            const result = await res.json();
+            if (result.code === 1000) {
+                const item = result.data;
+                // 更新本地数据
+                const idx = seckillList.findIndex(s => s.id === productID);
+                if (idx >= 0) seckillList[idx].stock = item.stock;
+                // 更新 DOM
+                updateStockUI(productID, item.stock);
+            }
+        } catch (e) {
+            // 静默失败
+        }
+    }
+
+    function updateStockUI(productID, stock) {
+        const bar = document.getElementById(`bar-${productID}`);
+        const btn = document.getElementById(`btn-${productID}`);
+        if (!bar || !btn) return;
+
+        const isSoldOut = stock <= 0;
+        const isLow = !isSoldOut && stock <= 5;
+
+        // 更新进度条
+        bar.className = 'stock-bar-fill' + (isLow ? ' low' : '');
+
+        // 更新徽标
+        const card = btn.closest('.seckill-card');
+        const badge = card ? card.querySelector('.seckill-badge') : null;
+        if (badge) {
+            if (isSoldOut) {
+                badge.textContent = '已抢完';
+                badge.className = 'seckill-badge sold-out';
+            } else if (isLow) {
+                badge.textContent = `仅剩 ${stock} 件`;
+                badge.className = 'seckill-badge low';
+            } else {
+                badge.textContent = `剩余 ${stock}`;
+                badge.className = 'seckill-badge';
+            }
+        }
+
+        // 更新按钮
+        if (isSoldOut && !btn.disabled) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="ri-emotion-sad-line"></i> 已抢完';
+        }
+    }
+
+    // ===== Toast 提示 =====
+    function showToast(msg, type) {
+        // 移除旧 toast
+        document.querySelectorAll('.success-toast').forEach(t => t.remove());
+
+        const toast = document.createElement('div');
+        toast.className = 'success-toast' +
+            (type === 'error' ? ' seckill-toast-error' : '') +
+            (type === 'warning' ? ' seckill-toast-warning' : '');
+
+        const icon = type === 'error' ? 'ri-close-circle-line'
+            : type === 'warning' ? 'ri-alert-line'
+            : 'ri-check-double-line';
+        toast.innerHTML = `<i class="${icon}"></i> ${escapeHtml(msg)}`;
+        document.body.appendChild(toast);
+
+        setTimeout(() => {
+            toast.classList.add('toast-hide');
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+
+    function escapeHtml(unsafe) {
+        if (!unsafe) return '';
+        return String(unsafe)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+</script>
+</body>
+</html>

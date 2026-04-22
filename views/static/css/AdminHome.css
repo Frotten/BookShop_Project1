@@ -39,10 +39,23 @@
     padding: 0 1rem 2rem;
 }
 
+/* 卡片数量为奇数（3 张）时最后一张居中 */
+.admin-grid > .admin-card:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+    max-width: 460px;
+    justify-self: center;
+}
+
 @media (max-width: 768px) {
     .admin-grid {
         grid-template-columns: 1fr;
         gap: 1.25rem;
+    }
+
+    .admin-grid > .admin-card:last-child:nth-child(odd) {
+        grid-column: auto;
+        max-width: 100%;
+        justify-self: auto;
     }
 }
 
@@ -92,10 +105,12 @@
     color: white;
 }
 
-.admin-card-icon.book { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); }
-.admin-card-icon.order { background: linear-gradient(135deg, #0891b2 0%, #06b6d4 100%); }
-.admin-card-icon.user { background: linear-gradient(135deg, #059669 0%, #10b981 100%); }
-.admin-card-icon.stat { background: linear-gradient(135deg, #d97706 0%, #f59e0b 100%); }
+.admin-card-icon.book    { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); }
+.admin-card-icon.order   { background: linear-gradient(135deg, #0891b2 0%, #06b6d4 100%); }
+.admin-card-icon.user    { background: linear-gradient(135deg, #059669 0%, #10b981 100%); }
+.admin-card-icon.stat    { background: linear-gradient(135deg, #d97706 0%, #f59e0b 100%); }
+/* 秒杀：橙红渐变 */
+.admin-card-icon.seckill { background: linear-gradient(135deg, #ea580c 0%, #f97316 100%); }
 
 .admin-card h3 {
     font-size: 1.2rem;
@@ -109,6 +124,11 @@
 
 .admin-card h3 i {
     color: var(--primary);
+}
+
+/* 秒杀卡片标题图标用橙色 */
+.admin-card:has(.admin-card-icon.seckill) h3 i {
+    color: #ea580c;
 }
 
 .admin-card > p {
@@ -164,6 +184,16 @@
 
 .admin-btn.ship:hover {
     background: linear-gradient(135deg, #0e7490 0%, #0891b2 100%);
+}
+
+/* 秒杀管理专用按钮样式 */
+.admin-btn.seckill-btn {
+    background: linear-gradient(135deg, #ea580c 0%, #f97316 100%);
+    color: white;
+}
+
+.admin-btn.seckill-btn:hover {
+    background: linear-gradient(135deg, #c2410c 0%, #ea580c 100%);
 }
 
 /* ===== 统计概览（可选扩展） ===== */

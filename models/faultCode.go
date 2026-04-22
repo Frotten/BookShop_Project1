@@ -1,3 +1,17 @@
+// 在 faultCode.go 的 const 块末尾追加以下错误码：
+
+// CodeSeckillNotFound  = 1016  // 秒杀活动不存在或未开始
+// CodeSeckillEnded     = 1017  // 秒杀活动已结束
+// CodeSeckillDuplicate = 1018  // 您已参与该秒杀，请勿重复抢购
+// CodeSeckillSoldOut   = 1019  // 秒杀商品已抢完
+
+// 在 codeMsgMap 中追加：
+// CodeSeckillNotFound:  "秒杀活动不存在或未开始",
+// CodeSeckillEnded:     "秒杀活动已结束",
+// CodeSeckillDuplicate: "您已参与该秒杀，请勿重复抢购",
+// CodeSeckillSoldOut:   "秒杀商品已抢完",
+
+// ========== 完整的 faultCode.go（供直接替换）==========
 package models
 
 type ResCode int64
@@ -25,6 +39,10 @@ const (
 	CodeInSufficient
 	CodeOrderNotExist
 	CodeOrderAlreadyConfirmed
+	CodeSeckillNotFound   // 1016 秒杀活动不存在或未开始
+	CodeSeckillEnded      // 1017 秒杀活动已结束
+	CodeSeckillDuplicate  // 1018 已参与该秒杀
+	CodeSeckillSoldOut    // 1019 秒杀商品已抢完
 )
 
 var codeMsgMap = map[ResCode]string{
@@ -44,6 +62,10 @@ var codeMsgMap = map[ResCode]string{
 	CodeInSufficient:          "库存不足",
 	CodeOrderNotExist:         "订单不存在或无权访问",
 	CodeOrderAlreadyConfirmed: "订单已确认，请勿重复操作",
+	CodeSeckillNotFound:       "秒杀活动不存在或未开始",
+	CodeSeckillEnded:          "秒杀活动已结束",
+	CodeSeckillDuplicate:      "您已参与该秒杀，请勿重复抢购",
+	CodeSeckillSoldOut:        "秒杀商品已抢完",
 }
 
 func (rc ResCode) Msg() string {

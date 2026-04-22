@@ -27,11 +27,12 @@
     <!-- 欢迎区域 -->
     <div class="admin-welcome">
         <h2><i class="ri-admin-line"></i> 管理员控制台</h2>
-        <p>欢迎回来，在这里您可以管理图书、订单、用户等信息。</p>
+        <p>欢迎回来，在这里您可以管理图书、订单与秒杀活动。</p>
     </div>
 
     <!-- 管理模块网格 -->
     <div class="admin-grid">
+
         <!-- 图书管理 -->
         <div class="admin-card">
             <div class="admin-card-icon book">
@@ -44,7 +45,7 @@
                     <i class="ri-add-line"></i> 添加书籍
                 </button>
                 <button class="admin-btn" onclick="location.href='/page/UpdateBookPage'">
-                    <i class="ri-edit-line"></i> 管理书籍
+                    <i class="ri-edit-line"></i> 修改书籍
                 </button>
                 <button class="admin-btn" onclick="location.href='/page/DeleteBookPage'">
                     <i class="ri-delete-bin-line"></i> 删除书籍
@@ -58,7 +59,7 @@
                 <i class="ri-shopping-bag-line"></i>
             </div>
             <h3><i class="ri-shopping-bag-line"></i> 订单管理</h3>
-            <p>处理用户订单，进行发货操作。</p>
+            <p>处理用户订单，进行发货操作，跟踪配送状态。</p>
             <div class="admin-card-actions">
                 <button class="admin-btn ship" onclick="location.href='/page/OrderShipmentPage'">
                     <i class="ri-truck-line"></i> 订单发货
@@ -66,36 +67,23 @@
             </div>
         </div>
 
-        <!-- 用户管理 -->
+        <!-- 秒杀管理 -->
         <div class="admin-card">
-            <div class="admin-card-icon user">
-                <i class="ri-user-settings-line"></i>
+            <div class="admin-card-icon seckill">
+                <i class="ri-flashlight-line"></i>
             </div>
-            <h3><i class="ri-user-settings-line"></i> 用户管理</h3>
-            <p>查看用户列表，管理用户权限与状态。</p>
+            <h3><i class="ri-flashlight-line"></i> 秒杀管理</h3>
+            <p>创建、下架秒杀活动，设置秒杀价格、库存与时间段。</p>
             <div class="admin-card-actions">
-                <button class="admin-btn" onclick="location.href='/admin/user/list'">
-                    <i class="ri-group-line"></i> 用户列表
+                <button class="admin-btn seckill-btn" onclick="location.href='/page/SeckillManagePage'">
+                    <i class="ri-settings-3-line"></i> 活动管理
                 </button>
-                <button class="admin-btn" onclick="location.href='/admin/user/manage'">
-                    <i class="ri-user-star-line"></i> 用户管理
-                </button>
+                <a class="admin-btn" href="/page/SeckillPage" target="_blank">
+                    <i class="ri-eye-line"></i> 预览前台
+                </a>
             </div>
         </div>
 
-        <!-- 数据统计 -->
-        <div class="admin-card">
-            <div class="admin-card-icon stat">
-                <i class="ri-bar-chart-line"></i>
-            </div>
-            <h3><i class="ri-bar-chart-line"></i> 数据统计</h3>
-            <p>查看商城运营数据、销售报表。</p>
-            <div class="admin-card-actions">
-                <button class="admin-btn" onclick="location.href='/admin/status'">
-                    <i class="ri-pie-chart-line"></i> 查看统计
-                </button>
-            </div>
-        </div>
     </div>
 </div>
 

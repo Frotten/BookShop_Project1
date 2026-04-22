@@ -65,6 +65,10 @@ func main() {
 		fmt.Printf("start order payment consumer failed, err:%v\n", err)
 		return
 	}
+	if err := mq.StartSeckillConsumer(); err != nil {
+		fmt.Printf("start seckill consumer failed, err:%v\n", err)
+		return
+	}
 	// 初始化雪花算法
 	if err := snowflake.Init(settings.Conf.StartTime, int64(settings.Conf.MachineID)); err != nil {
 		fmt.Printf("init snowflake failed, err: %v\n", err)
