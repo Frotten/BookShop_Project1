@@ -6,7 +6,6 @@ import (
 	"Project1_Shop/logger"
 	"Project1_Shop/pkg/Worker"
 	"Project1_Shop/pkg/mq"
-	"Project1_Shop/pkg/snowflake"
 	"Project1_Shop/router"
 	"Project1_Shop/settings"
 	"context"
@@ -67,11 +66,6 @@ func main() {
 	}
 	if err := mq.StartSeckillConsumer(); err != nil {
 		fmt.Printf("start seckill consumer failed, err:%v\n", err)
-		return
-	}
-	// 初始化雪花算法
-	if err := snowflake.Init(settings.Conf.StartTime, int64(settings.Conf.MachineID)); err != nil {
-		fmt.Printf("init snowflake failed, err: %v\n", err)
 		return
 	}
 	// 注册路由
