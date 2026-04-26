@@ -68,18 +68,13 @@ func DoSeckill(userID, productID int64) models.ResCode {
 		zap.L().Error("DoSeckill CreateSeckillOrder failed", zap.Error(err))
 		return models.CodeServerBusy
 	}
-	msg := &models.SeckillMsg{
-		UserID:    userID,
-		ProductID: productID,
-	}
-	if err := mq.PublishSeckillOrder(msg); err != nil {
+	if err := mq.PublishSeckillOrder(so.ID); err != nil {
 		zap.L().Error("DoSeckill PublishSeckillOrder failed",
 			zap.Int64("seckill_order_id", so.ID),
 			zap.Error(err),
 		)
 		return doSeckillSync(so, spView)
 	}
-
 	return models.CodeSuccess
 }
 

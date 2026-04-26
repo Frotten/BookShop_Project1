@@ -1,9 +1,7 @@
 package mq
 
 import (
-	"Project1_Shop/models"
 	"Project1_Shop/settings"
-	"encoding/json"
 	"fmt"
 	"strconv"
 	"sync"
@@ -169,6 +167,10 @@ func PublishOrderPayment(orderID int64) error {
 	return publish(OrderPaymentQueue, strconv.FormatInt(orderID, 10))
 }
 
+func PublishSeckillOrder(seckillID int64) error {
+	return publish(SeckillQueue, strconv.FormatInt(seckillID, 10))
+}
+
 func publish(queue, body string) error {
 	ch, err := getChannel()
 	if err != nil {
@@ -183,29 +185,6 @@ func publish(queue, body string) error {
 			DeliveryMode: amqp.Persistent,
 			ContentType:  "text/plain",
 			Body:         []byte(body),
-			Timestamp:    time.Now(),
-		},
-	)
-}
-
-func PublishSeckillOrder(msg *models.SeckillMsg) error {
-	data, err := json.Marshal(msg)
-	if err != nil {
-		return err
-	}
-	ch, err := getChannel()
-	if err != nil {
-		return err
-	}
-	return ch.Publish(
-		SeckillExchange,
-		SeckillRoutingKey,
-		false,
-		false,
-		amqp.Publishing{
-			DeliveryMode: amqp.Persistent,
-			ContentType:  "application/json",
-			Body:         data,
 			Timestamp:    time.Now(),
 		},
 	)
