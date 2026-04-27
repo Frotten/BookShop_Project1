@@ -69,6 +69,7 @@ func CommentBook(p *models.CommentBook) models.ResCode {
 	if err := mysql.SaveComment(p); err != nil {
 		return models.CodeMySQLError
 	}
+	_ = redis.SetCommentsToCache(p)
 	_ = redis.DelCommentsCache(p.BookID)
 	return models.CodeSuccess
 }

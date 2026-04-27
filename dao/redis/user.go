@@ -34,6 +34,14 @@ func GetTokenHash(UserID int64) string {
 	return Ans
 }
 
+func GetUserIDByTokenHash(tokenHash string) (int64, error) {
+	val, err := RDB.Get(ctx, "auth:refresh:"+tokenHash).Result()
+	if err != nil {
+		return 0, err
+	}
+	return strconv.ParseInt(val, 10, 64)
+}
+
 func GetUserInfo(UserID int64) (*models.UserView, error) {
 	key := "user:" + strconv.FormatInt(UserID, 10)
 	data, err := RDB.HGetAll(ctx, key).Result()

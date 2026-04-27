@@ -65,7 +65,7 @@ func AdminLogin(p *models.Admin) models.ResCode {
 }
 
 func GetUserInfo(UserID int64) (*models.UserView, models.ResCode) {
-	UserIDStr := strconv.FormatInt(UserID, 10)
+	UserIDStr := "userinfo:" + strconv.FormatInt(UserID, 10) // 【修复】加前缀，避免与评论 key 冲突
 	z, err, _ := redis.G.Do(UserIDStr, func() (interface{}, error) {
 		View, err := redis.GetUserInfo(UserID)
 		if err == nil && View != nil {
@@ -93,9 +93,10 @@ func GetUserInfo(UserID int64) (*models.UserView, models.ResCode) {
 }
 
 func GetCommentsByUser(UserID int64, UserName string) ([]*models.CommentBook, models.ResCode) {
-	z, err, _ := redis.G.Do(strconv.FormatInt(UserID, 10), func() (interface{}, error) {
+	sfKey := "usercomments:" + strconv.FormatInt(UserID, 10)
+	z, err, _ := redis.G.Do(sfKey, func() (interface{}, error) {
 		ids, err := redis.GetCommentIDsByUserID(UserID)
-		if err != nil {
+		if err != nil || len(ids) == 0 {
 			res, err := mysql.GetCommentsByUserID(UserID)
 			if err != nil {
 				return nil, err
@@ -107,9 +108,6 @@ func GetCommentsByUser(UserID int64, UserName string) ([]*models.CommentBook, mo
 				c.BookTitle = Book.Title
 			}
 			return res, err
-		}
-		if len(ids) == 0 {
-			return nil, err
 		}
 		list, missIDs, err := redis.MGetComments(ids)
 		if err != nil {

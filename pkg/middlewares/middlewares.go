@@ -54,23 +54,63 @@ func AdminOnlyMiddleware() gin.HandlerFunc {
 	}
 }
 
-func CookieAuthMiddleware() gin.HandlerFunc { //页面跳转无法将token写入消息头，故改用cookie
+func CookieAuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		token, err := c.Cookie("access_token")
+		if err == nil {
+			claims, parseErr := jwt.ParseToken(token)
+			if parseErr == nil {
+				c.Set("userID", claims.UserID)
+				c.Set("username", claims.Username)
+				c.Set("permission", claims.Permission)
+				c.Next()
+				return
+			}
+		}
+
+		refreshToken, err := c.Cookie("refresh_token")
 		if err != nil {
 			c.Redirect(302, "/page/LoginPage")
 			c.Abort()
 			return
 		}
-		claims, err := jwt.ParseToken(token)
-		if err != nil {
+
+		hash := sha256.Sum256([]byte(refreshToken))
+		tokenHash := hex.EncodeToString(hash[:])
+
+		userID, lookupErr := redis.GetUserIDByTokenHash(tokenHash)
+		if lookupErr != nil || userID <= 0 {
 			c.Redirect(302, "/page/LoginPage")
 			c.Abort()
 			return
 		}
-		c.Set("userID", claims.UserID)
-		c.Set("username", claims.Username)
-		c.Set("permission", claims.Permission)
+
+		userInfo, infoErr := redis.GetUserInfo(userID)
+		if infoErr != nil || userInfo == nil {
+			c.Redirect(302, "/page/LoginPage")
+			c.Abort()
+			return
+		}
+
+		newAccessToken, tokenErr := jwt.GenToken(userID, userInfo.Username)
+		if tokenErr != nil {
+			c.Redirect(302, "/page/LoginPage")
+			c.Abort()
+			return
+		}
+
+		c.SetCookie(
+			"access_token",
+			newAccessToken,
+			int(jwt.AccessExpireDuration.Seconds()),
+			"/",
+			"",
+			false,
+			true,
+		)
+		c.Set("userID", userID)
+		c.Set("username", userInfo.Username)
+		c.Set("permission", "user")
 		c.Next()
 	}
 }
