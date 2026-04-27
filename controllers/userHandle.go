@@ -67,7 +67,7 @@ func LoginHandler(c *gin.Context) {
 		int(jwt.TokenExpireDuration.Seconds()),
 		"/",
 		"",
-		true,
+		false,
 		true,
 	)
 	c.SetCookie(
@@ -76,7 +76,7 @@ func LoginHandler(c *gin.Context) {
 		int(jwt.AccessExpireDuration.Seconds()),
 		"/",
 		"",
-		true,
+		false,
 		true,
 	)
 	HandleSuccess(c, gin.H{
@@ -95,7 +95,7 @@ func RefreshHandler(c *gin.Context) {
 		HandleResponse(c, models.CodeInvalidToken)
 		return
 	}
-	c.SetCookie("refresh_token", newRefresh, int(jwt.TokenExpireDuration), "/", "", true, true)
+	c.SetCookie("refresh_token", newRefresh, int(jwt.TokenExpireDuration), "/", "", false, true)
 	HandleSuccess(c, gin.H{
 		"access_token": newAccess,
 	})

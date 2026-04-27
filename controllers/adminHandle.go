@@ -68,7 +68,7 @@ func AdminLoginHandler(c *gin.Context) {
 		int(jwt.TokenExpireDuration.Seconds()),
 		"/",
 		"",
-		true,
+		false,
 		true,
 	)
 	c.SetCookie(
@@ -77,7 +77,7 @@ func AdminLoginHandler(c *gin.Context) {
 		int(jwt.AccessExpireDuration.Seconds()),
 		"/",
 		"",
-		true,
+		false,
 		true,
 	)
 	HandleSuccess(c, gin.H{
