@@ -10,6 +10,16 @@ import (
 	"go.uber.org/zap"
 )
 
+// SignUpHandler 用户注册
+// @Summary      用户注册
+// @Description  注册新用户，需要提供用户名、密码、确认密码、邮箱和性别
+// @Tags         用户
+// @Accept       json
+// @Produce      json
+// @Param        body  body      models.ParamSignUp  true  "注册参数"
+// @Success      200   {object}  models.ResponseData{data=interface{}}  "注册成功"
+// @Failure      200   {object}  models.ResponseData  "参数错误 / 用户已存在 / 服务器繁忙"
+// @Router       /api/register [post]
 func SignUpHandler(c *gin.Context) {
 	var p models.ParamSignUp
 	if err := c.ShouldBindJSON(&p); err != nil {
@@ -30,6 +40,16 @@ func SignUpHandler(c *gin.Context) {
 	HandleSuccess(c, nil)
 }
 
+// LoginHandler 用户登录
+// @Summary      用户登录
+// @Description  用户登录，成功后通过 Cookie 下发 access_token 和 refresh_token，同时在响应体中返回 access_token
+// @Tags         用户
+// @Accept       json
+// @Produce      json
+// @Param        body  body      models.ParamLogin  true  "登录参数"
+// @Success      200   {object}  models.ResponseData{data=map[string]string}  "登录成功，返回 access_token"
+// @Failure      200   {object}  models.ResponseData  "参数错误 / 用户名或密码错误 / 服务器繁忙"
+// @Router       /api/login [post]
 func LoginHandler(c *gin.Context) {
 	var p models.ParamLogin
 	if err := c.ShouldBindJSON(&p); err != nil {
@@ -84,6 +104,14 @@ func LoginHandler(c *gin.Context) {
 	})
 }
 
+// RefreshHandler 刷新 Token
+// @Summary      刷新 Access Token
+// @Description  前端在 Access Token 过期时调用该接口，通过 Cookie 中的 refresh_token 换取新的 access_token
+// @Tags         用户
+// @Produce      json
+// @Success      200  {object}  models.ResponseData{data=map[string]string}  "刷新成功，返回新的 access_token"
+// @Failure      200  {object}  models.ResponseData  "无效的 Token"
+// @Router       /refreshtoken [post]
 func RefreshHandler(c *gin.Context) {
 	refreshToken, err := c.Cookie("refresh_token")
 	if err != nil {
@@ -101,6 +129,15 @@ func RefreshHandler(c *gin.Context) {
 	})
 }
 
+// GetUserInfoHandle 获取当前用户信息
+// @Summary      获取当前登录用户信息
+// @Description  获取当前登录用户的基本信息（需要登录）
+// @Tags         用户
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200  {object}  models.ResponseData{data=models.UserView}  "获取成功"
+// @Failure      200  {object}  models.ResponseData  "未登录 / 服务器繁忙"
+// @Router       /api/userInfo [get]
 func GetUserInfoHandle(c *gin.Context) {
 	UserID, ok := c.Get("userID")
 	if !ok || UserID == nil {
@@ -117,6 +154,15 @@ func GetUserInfoHandle(c *gin.Context) {
 	HandleSuccess(c, UserInfo)
 }
 
+// GetUserCommentsHandle 获取当前用户的评论列表
+// @Summary      获取当前用户的评论列表
+// @Description  获取当前登录用户发表的所有评论（需要登录）
+// @Tags         用户
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200  {object}  models.ResponseData{data=[]models.CommentBook}  "获取成功"
+// @Failure      200  {object}  models.ResponseData  "未登录 / 服务器繁忙"
+// @Router       /api/userComments [get]
 func GetUserCommentsHandle(c *gin.Context) {
 	UserID, ok := c.Get("userID")
 	if !ok || UserID == nil {
@@ -139,6 +185,15 @@ func GetUserCommentsHandle(c *gin.Context) {
 	HandleSuccess(c, Comments)
 }
 
+// GetUserRatingsHandle 获取当前用户的评分记录
+// @Summary      获取当前用户的评分记录
+// @Description  获取当前登录用户对书籍的所有评分记录（需要登录）
+// @Tags         用户
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200  {object}  models.ResponseData{data=[]models.UserRating}  "获取成功"
+// @Failure      200  {object}  models.ResponseData  "未登录 / 服务器繁忙"
+// @Router       /api/userRatings [get]
 func GetUserRatingsHandle(c *gin.Context) {
 	UserID, ok := c.Get("userID")
 	if !ok || UserID == nil {

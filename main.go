@@ -1,3 +1,21 @@
+// @title           Project1_Shop API
+// @version         1.0
+// @description     一个基于 Gin + GORM + Redis + RabbitMQ 的在线书店后端服务，提供用户认证、书籍管理、购物车、订单及秒杀等功能。
+// @termsOfService  http://swagger.io/terms/
+
+// @contact.name   Me
+// @contact.email  frottenice@outlook.com
+
+// @license.name  MIT
+// @license.url   https://opensource.org/licenses/MIT
+
+// @host      localhost:9090
+// @BasePath  /
+
+// @securityDefinitions.apikey  BearerAuth
+// @in                          header
+// @name                        Authorization
+// @description                 格式：Bearer {token}
 package main
 
 import (

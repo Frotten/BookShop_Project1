@@ -4,9 +4,12 @@ import (
 	"Project1_Shop/controllers"
 	"Project1_Shop/logger"
 	"Project1_Shop/pkg/middlewares"
+	_ "Project1_Shop/docs" // swagger docs
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	ginSwagger "github.com/swaggo/gin-swagger"
+	swaggerFiles "github.com/swaggo/files"
 	"go.uber.org/zap"
 )
 
@@ -15,6 +18,10 @@ func SetUp() *gin.Engine {
 	r.Use(logger.GinLogger(), logger.GinRecovery(true))
 	r.Static("/static", "./views/static")
 	r.LoadHTMLGlob("./views/pages/*.html")
+
+	// Swagger UI 路由
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
 	r.GET("/hello", func(c *gin.Context) {
 		c.String(http.StatusOK, "Welcome to the Shop")
 	})

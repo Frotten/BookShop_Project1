@@ -13,6 +13,15 @@ import (
 	"go.uber.org/zap"
 )
 
+// ScoreBookHandle 按评分分页获取书籍列表（指定页码）
+// @Summary      按评分分页获取书籍（指定页码）
+// @Description  按书籍评分降序分页返回书籍列表，指定页码（每页 8 条）
+// @Tags         书籍
+// @Produce      json
+// @Param        page  path      int  true  "页码（从 1 开始）"
+// @Success      200   {object}  models.ResponseData{data=models.Page}  "获取成功"
+// @Failure      200   {object}  models.ResponseData  "参数错误"
+// @Router       /api/getBooksJSON/{page} [get]
 func ScoreBookHandle(c *gin.Context) {
 	PageString := c.Param("page")
 	PageInt, err := strconv.ParseInt(PageString, 10, 64)
@@ -28,6 +37,14 @@ func ScoreBookHandle(c *gin.Context) {
 	HandleSuccess(c, Pages)
 }
 
+// GetBooksJSON 按评分获取第一页书籍列表
+// @Summary      获取书籍列表（第1页，按评分排序）
+// @Description  按书籍评分降序返回第 1 页书籍列表
+// @Tags         书籍
+// @Produce      json
+// @Success      200  {object}  models.ResponseData{data=models.Page}  "获取成功"
+// @Failure      200  {object}  models.ResponseData  "参数错误"
+// @Router       /api/getBooksJSON [get]
 func GetBooksJSON(c *gin.Context) {
 	PageInt := int64(1)
 	Pages, err := logic.GetPageBooks("score", PageInt)
@@ -38,6 +55,14 @@ func GetBooksJSON(c *gin.Context) {
 	HandleSuccess(c, Pages)
 }
 
+// GetBooksBySaleJSON 按销量获取第一页书籍列表
+// @Summary      获取书籍列表（第1页，按销量排序）
+// @Description  按书籍销量降序返回第 1 页书籍列表
+// @Tags         书籍
+// @Produce      json
+// @Success      200  {object}  models.ResponseData{data=models.Page}  "获取成功"
+// @Failure      200  {object}  models.ResponseData  "参数错误"
+// @Router       /api/getBooksBySaleJSON [get]
 func GetBooksBySaleJSON(c *gin.Context) {
 	PageInt := int64(1)
 	Pages, err := logic.GetPageBooksBySale("sale", PageInt)
@@ -48,6 +73,15 @@ func GetBooksBySaleJSON(c *gin.Context) {
 	HandleSuccess(c, Pages)
 }
 
+// SaleBookHandle 按销量分页获取书籍列表（指定页码）
+// @Summary      按销量分页获取书籍（指定页码）
+// @Description  按书籍销量降序分页返回书籍列表，指定页码（每页 8 条）
+// @Tags         书籍
+// @Produce      json
+// @Param        page  path      int  true  "页码（从 1 开始）"
+// @Success      200   {object}  models.ResponseData{data=models.Page}  "获取成功"
+// @Failure      200   {object}  models.ResponseData  "参数错误"
+// @Router       /api/getBooksBySaleJSON/{page} [get]
 func SaleBookHandle(c *gin.Context) {
 	PageString := c.Param("page")
 	PageInt, err := strconv.ParseInt(PageString, 10, 64)
@@ -63,6 +97,17 @@ func SaleBookHandle(c *gin.Context) {
 	HandleSuccess(c, Pages)
 }
 
+// AdminAddBookHandle 管理员添加书籍
+// @Summary      添加书籍（管理员）
+// @Description  管理员添加新书籍（需要管理员权限）
+// @Tags         书籍管理（管理员）
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        body  body      models.AddBookParam  true  "书籍信息"
+// @Success      200   {object}  models.ResponseData  "添加成功"
+// @Failure      200   {object}  models.ResponseData  "参数错误 / 无权限 / 服务器繁忙"
+// @Router       /admin/book/add [post]
 func AdminAddBookHandle(c *gin.Context) {
 	var B models.AddBookParam
 	if err := c.ShouldBindJSON(&B); err != nil {
@@ -79,6 +124,15 @@ func AdminAddBookHandle(c *gin.Context) {
 	HandleSuccess(c, nil)
 }
 
+// GetBookParamHandle 根据 ID 获取书籍详情
+// @Summary      根据书籍 ID 获取详情
+// @Description  通过书籍 ID 获取书籍详细信息（管理员和普通用户均可访问）
+// @Tags         书籍
+// @Produce      json
+// @Param        book_id  path      int  true  "书籍 ID"
+// @Success      200      {object}  models.ResponseData{data=models.Book}  "获取成功"
+// @Failure      200      {object}  models.ResponseData  "参数错误 / 书籍不存在 / 服务器繁忙"
+// @Router       /api/getBookDetail/{book_id} [get]
 func GetBookParamHandle(c *gin.Context) {
 	IDString := c.Param("book_id")
 	ID, err := strconv.ParseInt(IDString, 10, 64)
@@ -100,6 +154,15 @@ func GetBookParamHandle(c *gin.Context) {
 	HandleSuccess(c, Book)
 }
 
+// GetBookByTitleHandle 根据书名模糊搜索书籍
+// @Summary      根据书名搜索书籍
+// @Description  通过书名关键字模糊搜索书籍列表
+// @Tags         书籍
+// @Produce      json
+// @Param        title  path      string  true  "书名关键字"
+// @Success      200    {object}  models.ResponseData{data=[]models.Book}  "获取成功"
+// @Failure      200    {object}  models.ResponseData  "书籍不存在"
+// @Router       /api/getBookTitle/{title} [get]
 func GetBookByTitleHandle(c *gin.Context) {
 	Title := c.Param("title")
 	Books, err := logic.GetBooksByTitle(Title)
@@ -111,6 +174,16 @@ func GetBookByTitleHandle(c *gin.Context) {
 	HandleSuccess(c, Books)
 }
 
+// AdminDeleteBookHandle 管理员删除书籍
+// @Summary      删除书籍（管理员）
+// @Description  管理员根据书籍 ID 删除书籍（需要管理员权限）
+// @Tags         书籍管理（管理员）
+// @Produce      json
+// @Security     BearerAuth
+// @Param        book_id  path      int  true  "书籍 ID"
+// @Success      200      {object}  models.ResponseData  "删除成功"
+// @Failure      200      {object}  models.ResponseData  "参数错误 / 书籍不存在 / 无权限 / 服务器繁忙"
+// @Router       /admin/book/delete/{book_id} [delete]
 func AdminDeleteBookHandle(c *gin.Context) {
 	IDString := c.Param("book_id")
 	ID, err := strconv.ParseInt(IDString, 10, 64)
@@ -128,6 +201,17 @@ func AdminDeleteBookHandle(c *gin.Context) {
 	HandleSuccess(c, nil)
 }
 
+// AdminUpdateBookHandle 管理员更新书籍信息
+// @Summary      更新书籍信息（管理员）
+// @Description  管理员更新书籍信息，book_id 为必填（需要管理员权限）
+// @Tags         书籍管理（管理员）
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        body  body      models.UpdateBookParam  true  "更新书籍参数"
+// @Success      200   {object}  models.ResponseData  "更新成功"
+// @Failure      200   {object}  models.ResponseData  "参数错误 / 书籍不存在 / 无权限 / 服务器繁忙"
+// @Router       /admin/book/update [post]
 func AdminUpdateBookHandle(c *gin.Context) {
 	var B models.UpdateBookParam
 	if err := c.ShouldBindJSON(&B); err != nil {
@@ -149,6 +233,17 @@ func AdminUpdateBookHandle(c *gin.Context) {
 	HandleSuccess(c, nil)
 }
 
+// RateBookHandle 用户对书籍评分
+// @Summary      对书籍评分
+// @Description  登录用户对书籍进行评分（需要登录）
+// @Tags         书籍
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        body  body      models.UserRateBook  true  "评分参数"
+// @Success      200   {object}  models.ResponseData  "评分成功"
+// @Failure      200   {object}  models.ResponseData  "参数错误 / 未登录 / 服务器繁忙"
+// @Router       /api/rateBook [post]
 func RateBookHandle(c *gin.Context) {
 	var R models.UserRateBook
 	UserID, ok := c.Get("userID")
@@ -172,6 +267,14 @@ func RateBookHandle(c *gin.Context) {
 	HandleSuccess(c, nil)
 }
 
+// TopScoreHandle 获取评分最高的书籍列表
+// @Summary      获取评分 Top 书籍
+// @Description  获取综合评分最高的 Top 书籍列表
+// @Tags         书籍
+// @Produce      json
+// @Success      200  {object}  models.ResponseData{data=[]models.Book}  "获取成功"
+// @Failure      200  {object}  models.ResponseData  "服务器繁忙"
+// @Router       /api/topScore [get]
 func TopScoreHandle(c *gin.Context) {
 	ListBook, res := logic.GetTopScoreList()
 	if res != models.CodeSuccess {
@@ -182,6 +285,14 @@ func TopScoreHandle(c *gin.Context) {
 	HandleSuccess(c, ListBook)
 }
 
+// TopSaleHandle 获取销量最高的书籍列表
+// @Summary      获取销量 Top 书籍
+// @Description  获取销量最高的 Top 书籍列表
+// @Tags         书籍
+// @Produce      json
+// @Success      200  {object}  models.ResponseData{data=[]models.Book}  "获取成功"
+// @Failure      200  {object}  models.ResponseData  "服务器繁忙"
+// @Router       /api/topSale [get]
 func TopSaleHandle(c *gin.Context) {
 	Books, res := logic.GetTopSaleList()
 	if res != models.CodeSuccess {
@@ -192,6 +303,17 @@ func TopSaleHandle(c *gin.Context) {
 	HandleSuccess(c, Books)
 }
 
+// CommentHandle 发表评论
+// @Summary      发表书籍评论
+// @Description  登录用户对书籍发表评论，支持嵌套回复（需要登录）
+// @Tags         书籍
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        body  body      models.CommentParam  true  "评论参数"
+// @Success      200   {object}  models.ResponseData  "评论成功"
+// @Failure      200   {object}  models.ResponseData  "参数错误 / 未登录 / 服务器繁忙"
+// @Router       /api/comment [post]
 func CommentHandle(c *gin.Context) {
 	var CP models.CommentParam
 	if err := c.ShouldBindJSON(&CP); err != nil {
@@ -223,6 +345,15 @@ func CommentHandle(c *gin.Context) {
 	HandleSuccess(c, nil)
 }
 
+// CommentsHandle 获取书籍评论列表
+// @Summary      获取书籍评论列表
+// @Description  根据书籍 ID 获取该书籍的所有评论（树形结构）
+// @Tags         书籍
+// @Produce      json
+// @Param        book_id  query     int  true  "书籍 ID"
+// @Success      200      {object}  models.ResponseData{data=[]models.CommentBook}  "获取成功"
+// @Failure      200      {object}  models.ResponseData  "参数错误 / 服务器繁忙"
+// @Router       /api/comments [get]
 func CommentsHandle(c *gin.Context) {
 	bookIDStr := c.Query("book_id")
 	bookID, err := strconv.ParseInt(bookIDStr, 10, 64)
@@ -238,6 +369,17 @@ func CommentsHandle(c *gin.Context) {
 	HandleSuccess(c, list)
 }
 
+// CommentLikeHandle 点赞评论
+// @Summary      点赞评论
+// @Description  登录用户对指定评论进行点赞（需要登录）
+// @Tags         书籍
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        body  body      models.CommentLikeParam  true  "评论点赞参数"
+// @Success      200   {object}  models.ResponseData  "点赞成功"
+// @Failure      200   {object}  models.ResponseData  "参数错误 / 服务器繁忙"
+// @Router       /api/comment/like [post]
 func CommentLikeHandle(c *gin.Context) {
 	var p models.CommentLikeParam
 	if err := c.ShouldBindJSON(&p); err != nil {

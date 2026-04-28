@@ -9,7 +9,18 @@ import (
 	"go.uber.org/zap"
 )
 
-func CreateOrderHandle(c *gin.Context) { //还需要将生成的订单发送到MQ中等待处理或超时过期
+// CreateOrderHandle 创建订单
+// @Summary      创建订单
+// @Description  登录用户根据购物车商品创建订单，成功后自动清空购物车（需要登录）
+// @Tags         订单
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        body  body      models.OrderRequest  true  "订单创建参数（包含商品列表）"
+// @Success      200   {object}  models.ResponseData  "创建成功"
+// @Failure      200   {object}  models.ResponseData  "参数错误 / 库存不足 / 未登录 / 服务器繁忙"
+// @Router       /api/orderCreate [post]
+func CreateOrderHandle(c *gin.Context) {
 	var orderParam models.OrderRequest
 	if err := c.ShouldBindJSON(&orderParam); err != nil {
 		zap.L().Error("CreateOrderHandle failed", zap.Error(err))
@@ -43,6 +54,15 @@ func CreateOrderHandle(c *gin.Context) { //还需要将生成的订单发送到M
 	HandleSuccess(c, nil)
 }
 
+// GetUserOrderHandle 获取当前用户订单列表
+// @Summary      获取当前用户订单列表
+// @Description  获取当前登录用户的所有订单及订单详情（需要登录）
+// @Tags         订单
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200  {object}  models.ResponseData{data=[]models.OrderView}  "获取成功"
+// @Failure      200  {object}  models.ResponseData  "未登录 / 服务器繁忙"
+// @Router       /api/userOrders [get]
 func GetUserOrderHandle(c *gin.Context) {
 	UserID, ok := c.Get("userID")
 	if !ok || UserID == nil {
@@ -65,6 +85,16 @@ func GetUserOrderHandle(c *gin.Context) {
 	HandleSuccess(c, orderViews)
 }
 
+// GetOrderDetailHandle 获取订单详情
+// @Summary      获取订单详情
+// @Description  根据订单 ID 获取订单详细信息（需要登录）
+// @Tags         订单
+// @Produce      json
+// @Security     BearerAuth
+// @Param        order_id  path      int  true  "订单 ID"
+// @Success      200       {object}  models.ResponseData{data=models.OrderView}  "获取成功"
+// @Failure      200       {object}  models.ResponseData  "参数错误 / 订单不存在 / 未登录"
+// @Router       /api/orderDetail/{order_id} [get]
 func GetOrderDetailHandle(c *gin.Context) {
 	oidStr := c.Param("order_id")
 	orderID, err := strconv.ParseInt(oidStr, 10, 64)
@@ -80,6 +110,17 @@ func GetOrderDetailHandle(c *gin.Context) {
 	HandleSuccess(c, ov)
 }
 
+// OrderPayHandle 支付订单
+// @Summary      支付订单
+// @Description  用户支付指定订单（需要登录）
+// @Tags         订单
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        body  body      models.OrderConfirmParam  true  "订单 ID"
+// @Success      200   {object}  models.ResponseData  "支付成功"
+// @Failure      200   {object}  models.ResponseData  "参数错误 / 订单不存在 / 未登录 / 服务器繁忙"
+// @Router       /api/orderPay [post]
 func OrderPayHandle(c *gin.Context) {
 	var p models.OrderConfirmParam
 	if err := c.ShouldBindJSON(&p); err != nil {
@@ -95,6 +136,17 @@ func OrderPayHandle(c *gin.Context) {
 	HandleSuccess(c, nil)
 }
 
+// OrderCancelHandle 取消订单
+// @Summary      取消订单
+// @Description  用户取消指定未支付订单（需要登录）
+// @Tags         订单
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        body  body      models.OrderConfirmParam  true  "订单 ID"
+// @Success      200   {object}  models.ResponseData  "取消成功"
+// @Failure      200   {object}  models.ResponseData  "参数错误 / 订单不存在 / 未登录 / 服务器繁忙"
+// @Router       /api/orderCancel [post]
 func OrderCancelHandle(c *gin.Context) {
 	var p models.OrderConfirmParam
 	if err := c.ShouldBindJSON(&p); err != nil {
@@ -111,6 +163,15 @@ func OrderCancelHandle(c *gin.Context) {
 	HandleSuccess(c, nil)
 }
 
+// GetShipOrderHandle 获取待发货订单列表（管理员）
+// @Summary      获取待发货订单列表（管理员）
+// @Description  管理员获取所有待发货订单列表（需要管理员权限）
+// @Tags         订单管理（管理员）
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200  {object}  models.ResponseData{data=[]models.OrderView}  "获取成功"
+// @Failure      200  {object}  models.ResponseData  "无权限 / 服务器繁忙"
+// @Router       /admin/order/list [get]
 func GetShipOrderHandle(c *gin.Context) {
 	OV, res := logic.GetShipOrder()
 	if res != models.CodeSuccess {
@@ -121,6 +182,17 @@ func GetShipOrderHandle(c *gin.Context) {
 	HandleSuccess(c, OV)
 }
 
+// OrderShipHandle 订单发货（管理员）
+// @Summary      订单发货（管理员）
+// @Description  管理员对指定订单执行发货操作（需要管理员权限）
+// @Tags         订单管理（管理员）
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        body  body      models.OrderConfirmParam  true  "订单 ID"
+// @Success      200   {object}  models.ResponseData  "发货成功"
+// @Failure      200   {object}  models.ResponseData  "参数错误 / 订单不存在 / 无权限 / 服务器繁忙"
+// @Router       /admin/order/orderShip [post]
 func OrderShipHandle(c *gin.Context) {
 	var p models.OrderConfirmParam
 	if err := c.ShouldBindJSON(&p); err != nil {
@@ -137,6 +209,17 @@ func OrderShipHandle(c *gin.Context) {
 	HandleSuccess(c, nil)
 }
 
+// OrderConfirmHandle 确认收货
+// @Summary      确认收货
+// @Description  用户确认收货，订单状态变更为已完成（需要登录）
+// @Tags         订单
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        body  body      models.OrderConfirmParam  true  "订单 ID"
+// @Success      200   {object}  models.ResponseData  "确认成功"
+// @Failure      200   {object}  models.ResponseData  "参数错误 / 订单不存在 / 重复操作 / 未登录 / 服务器繁忙"
+// @Router       /api/orderConfirm [post]
 func OrderConfirmHandle(c *gin.Context) {
 	var p models.OrderConfirmParam
 	if err := c.ShouldBindJSON(&p); err != nil {
@@ -152,25 +235,3 @@ func OrderConfirmHandle(c *gin.Context) {
 	}
 	HandleSuccess(c, nil)
 }
-
-//func Seckill(c *gin.Context) {
-//	UserID, ok := c.Get("userID")
-//	if !ok || UserID == nil {
-//		zap.L().Error("GetUserOrderHandle failed: UserID not found in context")
-//		HandleResponse(c, models.CodeServerBusy)
-//		return
-//	}
-//	productIDStr := c.Param("id")
-//	productID, err := strconv.ParseInt(productIDStr, 10, 64)
-//	if err != nil || productID <= 0 {
-//		HandleResponse(c, models.CodeInvalidParam)
-//		return
-//	}
-//	res := logic.Seckill(UserID.(int64), productID)
-//	if res != models.CodeSuccess {
-//		zap.L().Error("Seckill failed")
-//		HandleResponse(c, res)
-//		return
-//	}
-//	HandleSuccess(c, nil)
-//}
