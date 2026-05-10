@@ -17,6 +17,12 @@ func Init(cfg *settings.MySQLConfig) (err error) {
 	if err != nil {
 		return err
 	}
+	sqlDB, err := db.DB()
+	if err != nil {
+		return err
+	}
+	sqlDB.SetMaxOpenConns(cfg.MaxOpenConns)
+	sqlDB.SetMaxIdleConns(cfg.MaxIdleConns)
 	DB = db
 	return nil
 }
