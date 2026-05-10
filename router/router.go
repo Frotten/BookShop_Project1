@@ -2,14 +2,14 @@ package router
 
 import (
 	"Project1_Shop/controllers"
+	_ "Project1_Shop/docs" // swagger docs
 	"Project1_Shop/logger"
 	"Project1_Shop/pkg/middlewares"
-	_ "Project1_Shop/docs" // swagger docs
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	ginSwagger "github.com/swaggo/gin-swagger"
 	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 	"go.uber.org/zap"
 )
 
@@ -62,7 +62,10 @@ func SetUp() *gin.Engine {
 			Login.POST("/orderPay", controllers.OrderPayHandle)
 			Login.POST("/orderCancel", controllers.OrderCancelHandle)
 			Login.POST("/orderConfirm", controllers.OrderConfirmHandle)
-			Login.POST("/seckill/do", controllers.SeckillHandle)
+		}
+		Effective := v1.Use(middlewares.JWTAuthMiddleware())
+		{
+			Effective.POST("/seckill/do", controllers.SeckillHandle)
 		}
 	}
 	v2 := r.Group("/page")

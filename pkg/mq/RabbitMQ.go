@@ -204,7 +204,7 @@ func StartConsumer(queue string, handler ConsumeFunc) error {
 	if err != nil {
 		return fmt.Errorf("open consumer channel failed: %w", err)
 	}
-	if err := ch.Qos(1, 0, false); err != nil {
+	if err := ch.Qos(10, 0, false); err != nil {
 		_ = ch.Close()
 		return fmt.Errorf("set QoS failed: %w", err)
 	}

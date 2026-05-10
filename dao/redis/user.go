@@ -49,6 +49,7 @@ func GetUserInfo(UserID int64) (*models.UserView, error) {
 		return nil, err
 	}
 	if len(data) == 0 {
+		SetEmpty(key)
 		return nil, nil
 	}
 	genderInt, err := strconv.ParseInt(data["gender"], 10, 8)

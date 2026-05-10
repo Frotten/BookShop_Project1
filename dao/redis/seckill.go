@@ -12,7 +12,6 @@ func seckillUserKey(userID, productID int64) string {
 	return "seckill:user:" + strconv.FormatInt(userID, 10) + ":" + strconv.FormatInt(productID, 10)
 }
 
-const seckillQueueKey = "seckill:queue"
 const seckillActiveKey = "seckill:active"
 
 var seckillLua = goredis.NewScript(`
