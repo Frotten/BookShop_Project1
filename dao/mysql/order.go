@@ -7,11 +7,11 @@ import (
 )
 
 func CreateOrder(Order *models.Order) error {
-	return DB.Create(Order).Error
+	return DB.CreateInBatches(Order, 100).Error
 }
 
 func CreateOrderItems(OrderItems []*models.OrderItem) error {
-	return DB.Create(&OrderItems).Error
+	return DB.CreateInBatches(OrderItems, 100).Error
 }
 
 func ReduceStockByBookID(BookID, Quantity int64) int64 {

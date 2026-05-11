@@ -40,9 +40,9 @@ export const options = {
             executor: 'ramping-vus',
 
             stages: [
-                { duration: '10s', target: 300 },
-                { duration: '20s', target: 1000 },
-                { duration: '30s', target: 2000 },
+                { duration: '10s', target: 1000 },
+                { duration: '20s', target: 3000 },
+                { duration: '30s', target: 5000 },
                 { duration: '10s', target: 0 },
             ],
         },
@@ -131,7 +131,7 @@ export default function () {
 
     const seckillPayload = JSON.stringify({
 
-        product_id: 11,
+        product_id: 13,
     });
 
     const seckillRes = http.post(
