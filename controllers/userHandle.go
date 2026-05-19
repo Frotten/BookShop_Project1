@@ -4,6 +4,7 @@ import (
 	"Project1_Shop/dao/redis"
 	"Project1_Shop/logic"
 	"Project1_Shop/models"
+	"Project1_Shop/pkg/authcookie"
 	"Project1_Shop/pkg/jwt"
 
 	"github.com/gin-gonic/gin"
@@ -81,24 +82,7 @@ func LoginHandler(c *gin.Context) {
 		HandleResponse(c, models.CodeServerBusy)
 		return
 	}
-	c.SetCookie(
-		"refresh_token",
-		refreshToken,
-		int(jwt.TokenExpireDuration.Seconds()),
-		"/",
-		"",
-		false,
-		true,
-	)
-	c.SetCookie(
-		"access_token",
-		accessToken,
-		int(jwt.AccessExpireDuration.Seconds()),
-		"/",
-		"",
-		false,
-		true,
-	)
+	authcookie.SetTokenCookies(c, accessToken, refreshToken)
 	HandleSuccess(c, gin.H{
 		"access_token": accessToken,
 	})
@@ -118,12 +102,12 @@ func RefreshHandler(c *gin.Context) {
 		HandleResponse(c, models.CodeInvalidToken)
 		return
 	}
-	newAccess, newRefresh, err := logic.Refresh(refreshToken, c)
+	newAccess, newRefresh, err := logic.Refresh(refreshToken)
 	if err != nil {
 		HandleResponse(c, models.CodeInvalidToken)
 		return
 	}
-	c.SetCookie("refresh_token", newRefresh, int(jwt.TokenExpireDuration), "/", "", false, true)
+	authcookie.SetTokenCookies(c, newAccess, newRefresh)
 	HandleSuccess(c, gin.H{
 		"access_token": newAccess,
 	})

@@ -49,9 +49,14 @@ function extractAccessToken(data) {
     return data.data.access_token || null;
 }
 
-// 调用 Refresh 接口刷新 Token
+let refreshInFlight = null;
+
+// 调用 Refresh 接口刷新 Token（Cookie 携带 refresh_token，响应体返回新 access_token）
 function refreshAccessToken() {
-    return fetch("/refreshtoken", {
+    if (refreshInFlight) {
+        return refreshInFlight;
+    }
+    refreshInFlight = fetch("/refreshtoken", {
         method: "POST",
         credentials: "include"
     })
@@ -64,7 +69,11 @@ function refreshAccessToken() {
             }
             return false;
         })
-        .catch(() => false);
+        .catch(() => false)
+        .finally(() => {
+            refreshInFlight = null;
+        });
+    return refreshInFlight;
 }
 
 // 进入页面时检查认证状态：无 token / 过期则尝试 Refresh
@@ -89,18 +98,36 @@ function logout() {
     window.location.href = "/page/HomePage";
 }
 
-function apiFetch(url, options = {}) {
-    const token = localStorage.getItem("access_token");
-
-    return fetch(url, {
+async function fetchWithAuth(url, options = {}, retried) {
+    const token = getAccessToken();
+    const res = await fetch(url, {
         ...options,
         headers: {
             "Content-Type": "application/json",
-            "Authorization": "Bearer " + token,
+            "Authorization": "Bearer " + (token || ""),
             ...(options.headers || {})
         },
         credentials: "include"
     });
+    if (retried) {
+        return res;
+    }
+    try {
+        const data = await res.clone().json();
+        if (data && (data.code === CODE_INVALID_TOKEN || data.code === CODE_NEED_LOGIN)) {
+            const ok = await refreshAccessToken();
+            if (ok) {
+                return fetchWithAuth(url, options, true);
+            }
+        }
+    } catch (_) {
+        /* 非 JSON 响应则直接返回 */
+    }
+    return res;
+}
+
+function apiFetch(url, options = {}) {
+    return fetchWithAuth(url, options, false);
 }
 
 function addToCart(bookId) {

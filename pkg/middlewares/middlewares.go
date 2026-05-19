@@ -3,7 +3,9 @@ package middlewares
 import (
 	"Project1_Shop/controllers"
 	"Project1_Shop/dao/redis"
+	"Project1_Shop/logic"
 	"Project1_Shop/models"
+	"Project1_Shop/pkg/authcookie"
 	"Project1_Shop/pkg/jwt"
 	"crypto/sha256"
 	"encoding/hex"
@@ -75,42 +77,21 @@ func CookieAuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		hash := sha256.Sum256([]byte(refreshToken))
-		tokenHash := hex.EncodeToString(hash[:])
-
-		userID, lookupErr := redis.GetUserIDByTokenHash(tokenHash)
-		if lookupErr != nil || userID <= 0 {
+		accessToken, newRefresh, role, username, subjectID, rotErr := logic.RotateRefreshSession(refreshToken)
+		if rotErr != nil {
 			c.Redirect(302, "/page/LoginPage")
 			c.Abort()
 			return
 		}
 
-		userInfo, infoErr := redis.GetUserInfo(userID)
-		if infoErr != nil || userInfo == nil {
-			c.Redirect(302, "/page/LoginPage")
-			c.Abort()
-			return
+		authcookie.SetTokenCookies(c, accessToken, newRefresh)
+		c.Set("userID", subjectID)
+		c.Set("username", username)
+		if role == redis.AuthRoleAdmin {
+			c.Set("permission", "admin")
+		} else {
+			c.Set("permission", "user")
 		}
-
-		newAccessToken, tokenErr := jwt.GenToken(userID, userInfo.Username)
-		if tokenErr != nil {
-			c.Redirect(302, "/page/LoginPage")
-			c.Abort()
-			return
-		}
-
-		c.SetCookie(
-			"access_token",
-			newAccessToken,
-			int(jwt.AccessExpireDuration.Seconds()),
-			"/",
-			"",
-			false,
-			true,
-		)
-		c.Set("userID", userID)
-		c.Set("username", userInfo.Username)
-		c.Set("permission", "user")
 		c.Next()
 	}
 }
@@ -125,14 +106,13 @@ func CheckLoginOnlyMiddleware() gin.HandlerFunc {
 		}
 		hash := sha256.Sum256([]byte(refreshToken))
 		tokenHash := hex.EncodeToString(hash[:])
-		UserID, _ := c.Get("userID")
-		ReTokenHash := redis.GetTokenHash(UserID.(int64))
-		if tokenHash == ReTokenHash {
+		userID, _ := c.Get("userID")
+		storedHash := redis.GetSessionTokenHash(redis.AuthRoleUser, userID.(int64))
+		if tokenHash == storedHash {
 			c.Next()
 			return
 		}
 		controllers.HandleResponse(c, models.CodeInvalidToken)
 		c.Abort()
-		return
 	}
 }

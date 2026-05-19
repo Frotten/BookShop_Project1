@@ -4,6 +4,7 @@ import (
 	"Project1_Shop/dao/redis"
 	"Project1_Shop/logic"
 	"Project1_Shop/models"
+	"Project1_Shop/pkg/authcookie"
 	"Project1_Shop/pkg/jwt"
 
 	"github.com/gin-gonic/gin"
@@ -80,26 +81,12 @@ func AdminLoginHandler(c *gin.Context) {
 		HandleResponse(c, models.CodeServerBusy)
 		return
 	}
-	redis.RDB.Set(c, "auth:refresh:"+tokenHash, A.AdminID, jwt.TokenExpireDuration)
-
-	c.SetCookie(
-		"refresh_token",
-		refreshToken,
-		int(jwt.TokenExpireDuration.Seconds()),
-		"/",
-		"",
-		false,
-		true,
-	)
-	c.SetCookie(
-		"access_token",
-		accessToken,
-		int(jwt.AccessExpireDuration.Seconds()),
-		"/",
-		"",
-		false,
-		true,
-	)
+	if err = redis.SetAdminAuth(tokenHash, A.AdminID); err != nil {
+		zap.L().Error("redis.SetAdminAuth failed", zap.Error(err))
+		HandleResponse(c, models.CodeServerBusy)
+		return
+	}
+	authcookie.SetTokenCookies(c, accessToken, refreshToken)
 	HandleSuccess(c, gin.H{
 		"access_token": accessToken,
 	})

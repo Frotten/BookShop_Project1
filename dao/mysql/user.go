@@ -84,3 +84,12 @@ func GetUserInfo(UserID int64) (*models.User, error) {
 	}
 	return &u, result.Error
 }
+
+func GetAdminByID(adminID int64) (*models.Admin, error) {
+	var a models.Admin
+	result := DB.First(&a, adminID)
+	if result.RowsAffected == 0 {
+		return nil, result.Error
+	}
+	return &a, result.Error
+}
