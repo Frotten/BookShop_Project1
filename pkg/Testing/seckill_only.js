@@ -42,7 +42,7 @@ export const options = {
             stages: [
                 { duration: '10s', target: 1000 },
                 { duration: '20s', target: 3000 },
-                { duration: '30s', target: 5000 },
+                { duration: '30s', target: 6000 },
                 { duration: '10s', target: 0 },
             ],
         },
@@ -131,7 +131,7 @@ export default function () {
 
     const seckillPayload = JSON.stringify({
 
-        product_id: 13,
+        product_id: 15,
     });
 
     const seckillRes = http.post(

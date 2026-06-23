@@ -8,6 +8,7 @@ import (
 
 func CreateOrder(Order *models.Order) error {
 	return DB.CreateInBatches(Order, 100).Error
+	//批量插入效率更高
 }
 
 func CreateOrderItems(OrderItems []*models.OrderItem) error {
